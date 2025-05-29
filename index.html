@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рандомизатор заявок клиентов</title>
+    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/u/117104599?v=4">
+    <style>
+        :root {
+            --bg: #23272e;
+            --container-bg: #282c34;
+            --accent: #6ee7b7;
+            --accent2: #34d399;
+            --text: #e2e8f0;
+            --text-muted: #a0aec0;
+            --input-bg: #2d323b;
+            --input-border: #3b4252;
+            --btn-bg: #393e4a;
+            --btn-hover: #34d399;
+            --danger: #f56565;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: var(--container-bg);
+            padding: 32px 40px 28px 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.25);
+            text-align: center;
+            min-width: 340px;
+        }
+        h2, h3 {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+        .request {
+            margin: 24px 0 18px 0;
+            font-size: 22px;
+            min-height: 32px;
+            color: var(--accent2);
+            letter-spacing: 0.5px;
+        }
+        button {
+            margin: 8px 6px;
+            padding: 10px 22px;
+            font-size: 16px;
+            border-radius: 7px;
+            border: none;
+            background: var(--btn-bg);
+            color: var(--text);
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            outline: none;
+        }
+        button:disabled {
+            background: #444a57;
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+        button:not(:disabled):hover {
+            background: var(--btn-hover);
+            color: #fff;
+        }
+        #addInput, #searchInput {
+            background: var(--input-bg);
+            color: var(--text);
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            padding: 9px 12px;
+            font-size: 15px;
+            margin-bottom: 0;
+            outline: none;
+            transition: border 0.2s;
+        }
+        #addInput:focus, #searchInput:focus {
+            border: 1.5px solid var(--accent);
+        }
+        #showListBtn {
+            background: var(--accent2);
+            color: #23272e;
+            font-weight: 500;
+        }
+        #showListBtn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+        ul#requestList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        ul#requestList li {
+            background: var(--input-bg);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text);
+            font-size: 15px;
+        }
+        ul#requestList li span {
+            flex: 1;
+            margin-right: 10px;
+            word-break: break-word;
+        }
+        ul#requestList li input[type="text"] {
+            background: var(--container-bg);
+            color: var(--text);
+            border: 1px solid var(--input-border);
+            border-radius: 5px;
+            padding: 6px 8px;
+            font-size: 15px;
+            margin-right: 10px;
+        }
+        ul#requestList li button {
+            padding: 6px 12px;
+            font-size: 14px;
+            margin: 0 2px;
+        }
+        ul#requestList li button:last-child {
+            background: var(--danger);
+            color: #fff;
+        }
+        ul#requestList li button:last-child:hover {
+            background: #e53e3e;
+        }
+        #modal {
+            background: rgba(30,32,38,0.85);
+        }
+        #modal > div {
+            background: var(--container-bg);
+            color: var(--text);
+            box-shadow: 0 4px 32px rgba(0,0,0,0.35);
+            border: 2px solid var(--accent2);
+        }
+        #closeModalBtn {
+            color: var(--accent2);
+            font-size: 22px;
+            background: none;
+        }
+        #closeModalBtn:hover {
+            color: var(--accent);
+        }
+        #modal h3 {
+            color: var(--accent2);
+        }
+        #modal input[type="text"] {
+            border: 1.5px solid var(--accent2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Рандомизатор заявок клиентов</h2>
+        <div class="request" id="requestField">Заявка не выбрана</div>
+        <button id="randomBtn">Бросить кости на заявку</button>
+        <button id="doneBtn" disabled>Выполнено</button>
+        <button id="showListBtn" style="margin-bottom: 10px;">Просмотр и редактирование всех заявок</button>
+        <button id="uploadXlsxBtn" style="margin-bottom: 10px;">Загрузить заявки из Excel</button>
+        <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none;">
+        <form id="addForm" style="margin: 20px 0;">
+            <input type="text" id="addInput" placeholder="Новая заявка..." required style="padding: 8px; width: 250px;">
+            <button type="submit">Добавить заявку</button>
+        </form>
+        <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:1000;">
+            <div style="padding:30px 30px 20px 30px; border-radius:10px; min-width:350px; max-width:90vw; max-height:80vh; overflow:auto; position:relative;">
+                <button id="closeModalBtn" style="position:absolute; top:10px; right:10px; font-size:18px; background:none; border:none; cursor:pointer;">✕</button>
+                <h3>Все заявки</h3>
+                <input type="text" id="searchInput" placeholder="Поиск по заявкам..." style="padding: 8px; width: 250px; margin-bottom: 10px;">
+                <button id="deleteAllBtn" style="background:var(--danger);color:#fff;margin-bottom:12px;">Удалить все заявки</button>
+                <div style="max-height: 300px; overflow-y: auto; width: 100%;">
+                    <ul id="requestList" style="text-align:left; max-width:400px; margin:0 auto;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</body>
+</html> 
