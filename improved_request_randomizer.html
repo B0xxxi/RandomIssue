@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Рандомизатор заявок клиентов</title>
     <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/u/117104599?v=4">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --primary: linear-gradient(135deg, #6fea66 0%, #4ba264 100%);
@@ -457,6 +458,204 @@
             margin-bottom: 12px;
             opacity: 0.5;
         }
+
+        /* Карта стили */
+        .map-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .map-modal-content {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            width: 95%;
+            height: 90%;
+            max-width: 1200px;
+            max-height: 800px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .map-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .map-sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            border-radius: 0 0 20px 0;
+            z-index: 1;
+            flex: 1;
+        }
+
+        /* Исправляем стили Leaflet для темной темы */
+        .leaflet-control-container {
+            font-family: inherit;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+
+        .leaflet-popup-tip {
+            background: white;
+        }
+
+        .leaflet-container {
+            background: #f0f0f0;
+        }
+
+        .leaflet-tile-pane {
+            filter: none;
+        }
+
+        .points-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .point-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .point-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .point-item.selected {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .point-name {
+            font-weight: 600;
+            color: var(--accent-light);
+            margin-bottom: 4px;
+        }
+
+        .point-address {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .point-coords {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .file-upload-area {
+            border: 2px dashed var(--input-border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-area:hover,
+        .file-upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .map-stats {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .map-stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .map-stats-item:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .map-modal-content {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+            }
+
+            .map-body {
+                flex-direction: column;
+            }
+
+            .map-sidebar {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            #map {
+                border-radius: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -491,6 +690,7 @@
         <div class="button-group">
             <button class="btn btn-secondary" id="showListBtn">📋 Управление заявками</button>
             <button class="btn btn-secondary" id="uploadXlsxBtn">📊 Загрузить Excel</button>
+            <button class="btn btn-secondary" id="showMapBtn">🗺️ Карта точек</button>
         </div>
 
         <form class="add-form" id="addForm">
@@ -535,7 +735,59 @@
         </div>
     </div>
 
+    <!-- Map Modal -->
+    <div class="map-modal" id="mapModal">
+        <div class="map-modal-content">
+            <div class="map-header">
+                <h3 class="modal-title">🗺️ Карта точек</h3>
+                <button class="close-btn" id="closeMapModalBtn">✕</button>
+            </div>
+            <div class="map-body">
+                <div class="map-sidebar">
+                    <div class="map-stats">
+                        <div class="map-stats-item">
+                            <span>Всего точек:</span>
+                            <span id="totalPoints">0</span>
+                        </div>
+                        <div class="map-stats-item">
+                            <span>Выбрано:</span>
+                            <span id="selectedPoints">0</span>
+                        </div>
+                    </div>
+
+                    <div class="file-upload-area" id="mapFileUpload">
+                        <p>📁 Загрузить точки из файла</p>
+                        <small>Поддерживаются Excel (.xlsx, .xls) и CSV файлы</small>
+                    </div>
+
+                    <div class="map-controls">
+                        <button class="btn btn-small btn-secondary" id="clearMapBtn">🗑️ Очистить</button>
+                        <button class="btn btn-small btn-secondary" id="centerMapBtn">🎯 Центрировать</button>
+                        <button class="btn btn-small btn-success" id="exportMapBtn">📤 Экспорт</button>
+                    </div>
+
+                    <div class="search-container">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="input search-input" id="mapSearchInput" placeholder="Поиск точек...">
+                    </div>
+
+                    <div class="points-list" id="pointsList">
+                        <div class="empty-state">
+                            <p>Точки не добавлены</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="mapFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+
     <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Данные и состояние
         let requests = [
@@ -548,6 +800,12 @@
         let currentIndex = null;
         let completedCount = 0;
         let editingId = null;
+
+        // Карта и точки
+        let map = null;
+        let mapPoints = [];
+        let mapMarkers = [];
+        let selectedPointId = null;
 
         // DOM элементы
         const elements = {
@@ -569,7 +827,20 @@
             dragDropArea: document.getElementById('dragDropArea'),
             totalRequests: document.getElementById('totalRequests'),
             completedRequests: document.getElementById('completedRequests'),
-            progressFill: document.getElementById('progressFill')
+            progressFill: document.getElementById('progressFill'),
+            // Карта элементы
+            showMapBtn: document.getElementById('showMapBtn'),
+            mapModal: document.getElementById('mapModal'),
+            closeMapModalBtn: document.getElementById('closeMapModalBtn'),
+            mapFileUpload: document.getElementById('mapFileUpload'),
+            mapFileInput: document.getElementById('mapFileInput'),
+            pointsList: document.getElementById('pointsList'),
+            mapSearchInput: document.getElementById('mapSearchInput'),
+            clearMapBtn: document.getElementById('clearMapBtn'),
+            centerMapBtn: document.getElementById('centerMapBtn'),
+            exportMapBtn: document.getElementById('exportMapBtn'),
+            totalPoints: document.getElementById('totalPoints'),
+            selectedPoints: document.getElementById('selectedPoints')
         };
 
         // Уведомления
@@ -852,7 +1123,8 @@
         function saveData() {
             const data = {
                 requests: requests,
-                completedCount: completedCount
+                completedCount: completedCount,
+                mapPoints: mapPoints
             };
             localStorage.setItem('requestsData', JSON.stringify(data));
         }
@@ -862,9 +1134,316 @@
                 const data = JSON.parse(localStorage.getItem('requestsData') || '{}');
                 if (data.requests) requests = data.requests;
                 if (data.completedCount) completedCount = data.completedCount;
+                if (data.mapPoints) mapPoints = data.mapPoints;
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
             }
+        }
+
+        // Функции для работы с картой
+        function initializeMap() {
+            if (map) {
+                // Если карта уже существует, принудительно обновляем размер
+                setTimeout(() => {
+                    map.invalidateSize(true);
+                    map.getContainer().style.height = '100%';
+                }, 300);
+                return;
+            }
+            
+            // Создаем карту с принудительным размером
+            map = L.map('map', {
+                preferCanvas: true,
+                zoomControl: true
+            }).setView([55.7558, 37.6176], 10);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Принудительно обновляем размер после создания
+            setTimeout(() => {
+                map.invalidateSize(true);
+            }, 100);
+
+            // Обработчик клика по карте
+            map.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                const name = prompt('Введите название точки:');
+                if (name) {
+                    const address = prompt('Введите адрес (необязательно):') || '';
+                    addMapPoint({
+                        name: name,
+                        address: address,
+                        lat: lat,
+                        lng: lng
+                    });
+                }
+            });
+        }
+
+        function addMapPoint(point) {
+            const id = Date.now();
+            const newPoint = {
+                id: id,
+                name: point.name,
+                address: point.address || '',
+                lat: parseFloat(point.lat),
+                lng: parseFloat(point.lng)
+            };
+            
+            mapPoints.push(newPoint);
+            addMarkerToMap(newPoint);
+            updateMapStats();
+            renderPointsList();
+            saveData();
+            showNotification(`Точка "${point.name}" добавлена на карту!`);
+        }
+
+        function addMarkerToMap(point) {
+            // Проверяем, не существует ли уже маркер для этой точки
+            const existingMarker = mapMarkers.find(m => m.pointId === point.id);
+            if (existingMarker) {
+                return existingMarker;
+            }
+
+            const marker = L.marker([point.lat, point.lng])
+                .addTo(map)
+                .bindPopup(`
+                    <div style="color: #1a202c;">
+                        <strong>${point.name}</strong><br>
+                        ${point.address ? `<small>${point.address}</small><br>` : ''}
+                        <small>Координаты: ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</small>
+                    </div>
+                `);
+            
+            marker.pointId = point.id;
+            mapMarkers.push(marker);
+            
+            marker.on('click', function() {
+                selectPoint(point.id);
+            });
+
+            return marker;
+        }
+
+        function selectPoint(pointId) {
+            selectedPointId = pointId;
+            renderPointsList();
+            updateMapStats();
+            
+            // Центрируем карту на выбранной точке
+            const point = mapPoints.find(p => p.id === pointId);
+            if (point) {
+                map.setView([point.lat, point.lng], 15);
+            }
+        }
+
+        function removeMapPoint(pointId) {
+            if (confirm('Удалить эту точку с карты?')) {
+                mapPoints = mapPoints.filter(p => p.id !== pointId);
+                
+                // Удаляем маркер с карты
+                const markerIndex = mapMarkers.findIndex(m => m.pointId === pointId);
+                if (markerIndex !== -1) {
+                    map.removeLayer(mapMarkers[markerIndex]);
+                    mapMarkers.splice(markerIndex, 1);
+                }
+                
+                if (selectedPointId === pointId) {
+                    selectedPointId = null;
+                }
+                
+                updateMapStats();
+                renderPointsList();
+                saveData();
+                showNotification('Точка удалена с карты!', 'error');
+            }
+        }
+
+        function clearAllMapPoints() {
+            if (confirm('Удалить все точки с карты? Это действие необратимо.')) {
+                mapPoints = [];
+                mapMarkers.forEach(marker => map.removeLayer(marker));
+                mapMarkers = [];
+                selectedPointId = null;
+                updateMapStats();
+                renderPointsList();
+                saveData();
+                showNotification('Все точки удалены с карты!', 'error');
+            }
+        }
+
+        function centerMap() {
+            if (mapPoints.length === 0) {
+                map.setView([55.7558, 37.6176], 10);
+                return;
+            }
+            
+            const group = new L.featureGroup(mapMarkers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        function updateMapStats() {
+            elements.totalPoints.textContent = mapPoints.length;
+            elements.selectedPoints.textContent = selectedPointId ? 1 : 0;
+        }
+
+        function renderPointsList() {
+            const searchTerm = elements.mapSearchInput.value.toLowerCase();
+            const filteredPoints = mapPoints.filter(point => 
+                point.name.toLowerCase().includes(searchTerm) ||
+                point.address.toLowerCase().includes(searchTerm)
+            );
+
+            if (filteredPoints.length === 0) {
+                elements.pointsList.innerHTML = `
+                    <div class="empty-state">
+                        <p>${searchTerm ? 'Точки не найдены' : 'Точки не добавлены'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.pointsList.innerHTML = filteredPoints.map(point => `
+                <div class="point-item ${selectedPointId === point.id ? 'selected' : ''}" 
+                     onclick="selectPoint(${point.id})">
+                    <div class="point-name">${point.name}</div>
+                    <div class="point-address">${point.address}</div>
+                    <div class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</div>
+                    <div style="margin-top: 8px;">
+                        <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); removeMapPoint(${point.id})">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleMapFileUpload(file) {
+            console.log('Загрузка файла для карты:', file.name);
+            
+            if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+                showNotification('Поддерживаются только файлы Excel (.xlsx, .xls) и CSV', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let data;
+                    
+                    if (file.name.match(/\.csv$/i)) {
+                        // Обработка CSV
+                        const csv = e.target.result;
+                        const lines = csv.split('\n');
+                        data = lines.slice(1).map(line => {
+                            const cols = line.split(',');
+                            return [cols[0], cols[1], cols[2]]; // Клуб, Адрес, Координаты
+                        });
+                    } else {
+                        // Обработка Excel
+                        const arrayBuffer = e.target.result;
+                        const workbook = XLSX.read(arrayBuffer, {type: 'array'});
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        data = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                    }
+
+                    let added = 0;
+                    let errors = 0;
+
+                    data.forEach((row, index) => {
+                        if (index === 0 || !row || row.length < 3) return; // Пропускаем заголовок и неполные строки
+                        
+                        const name = row[0]?.toString().trim(); // Клуб
+                        const address = row[1]?.toString().trim(); // Адрес
+                        const coords = row[2]?.toString().trim(); // Координаты
+                        
+                        if (!name || !coords) {
+                            errors++;
+                            return;
+                        }
+
+                        // Парсим координаты
+                        const coordsMatch = coords.match(/([0-9.]+)[\s,]+([0-9.]+)/);
+                        if (!coordsMatch) {
+                            errors++;
+                            return;
+                        }
+
+                        const lat = parseFloat(coordsMatch[1]);
+                        const lng = parseFloat(coordsMatch[2]);
+
+                        if (isNaN(lat) || isNaN(lng)) {
+                            errors++;
+                            return;
+                        }
+
+                        // Проверяем, не существует ли уже точка с таким названием
+                        const existingPoint = mapPoints.find(p => p.name === name);
+                        if (existingPoint) {
+                            return;
+                        }
+
+                        const newPoint = {
+                            id: Date.now() + index,
+                            name: name,
+                            address: address || '',
+                            lat: lat,
+                            lng: lng
+                        };
+
+                        mapPoints.push(newPoint);
+                        addMarkerToMap(newPoint);
+                        added++;
+                    });
+
+                    if (added > 0) {
+                        updateMapStats();
+                        renderPointsList();
+                        saveData();
+                        centerMap();
+                        showNotification(`Загружено ${added} точек на карту!`);
+                    }
+
+                    if (errors > 0) {
+                        showNotification(`${errors} строк пропущено из-за ошибок`, 'warning');
+                    }
+
+                } catch (error) {
+                    console.error('Ошибка обработки файла:', error);
+                    showNotification('Ошибка обработки файла', 'error');
+                }
+            };
+
+            if (file.name.match(/\.csv$/i)) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function exportMapPoints() {
+            if (mapPoints.length === 0) {
+                showNotification('Нет точек для экспорта', 'error');
+                return;
+            }
+
+            const data = mapPoints.map((point, index) => ({
+                '№': index + 1,
+                'Клуб': point.name,
+                'Адрес': point.address,
+                'Координаты': `${point.lat}, ${point.lng}`
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Точки на карте");
+            XLSX.writeFile(wb, `карта_точки_${new Date().toLocaleDateString()}.xlsx`);
+            showNotification('Файл с точками экспортирован!');
         }
 
         // Event Listeners
@@ -915,6 +1494,88 @@
         elements.resetCompletedBtn.addEventListener('click', resetCompletedRequests);
         elements.exportBtn.addEventListener('click', exportToExcel);
 
+        // Обработчики событий карты
+        elements.showMapBtn.addEventListener('click', function() {
+            // Отображаем модальное окно с картой
+            elements.mapModal.style.display = 'flex';
+            // Ждем, пока модальное окно отрисуется, затем инициализируем карту
+            setTimeout(() => {
+                initializeMap();
+                // Загружаем существующие точки на карту (если их ещё нет)
+                mapPoints.forEach(point => {
+                    if (!mapMarkers.find(m => m.pointId === point.id)) {
+                        addMarkerToMap(point);
+                    }
+                });
+                updateMapStats();
+                renderPointsList();
+                // Обновляем размер карты и центрируем
+                if (map) {
+                    map.invalidateSize(true);
+                    centerMap();
+                }
+            }, 300);
+        });
+
+        elements.closeMapModalBtn.addEventListener('click', function() {
+            elements.mapModal.style.display = 'none';
+            // Удаляем экземпляр карты при закрытии
+            if (map) {
+                map.remove();
+                map = null;
+                mapMarkers = [];
+            }
+        });
+
+        elements.mapModal.addEventListener('click', function(e) {
+            if (e.target === elements.mapModal) {
+                elements.mapModal.style.display = 'none';
+                // Удаляем карту при клике вне контента
+                if (map) {
+                    map.remove();
+                    map = null;
+                    mapMarkers = [];
+                }
+            }
+        });
+
+        elements.mapFileUpload.addEventListener('click', function() {
+            elements.mapFileInput.click();
+        });
+
+        elements.mapFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleMapFileUpload(file);
+            }
+            e.target.value = '';
+        });
+
+        elements.mapSearchInput.addEventListener('input', renderPointsList);
+        elements.clearMapBtn.addEventListener('click', clearAllMapPoints);
+        elements.centerMapBtn.addEventListener('click', centerMap);
+        elements.exportMapBtn.addEventListener('click', exportMapPoints);
+
+        // Drag & Drop для файлов карты
+        elements.mapFileUpload.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            elements.mapFileUpload.classList.add('dragover');
+        });
+
+        elements.mapFileUpload.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            elements.mapFileUpload.classList.remove('dragover');
+        });
+
+        elements.mapFileUpload.addEventListener('drop', function(e) {
+            e.preventDefault();
+            elements.mapFileUpload.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleMapFileUpload(file);
+            }
+        });
+
         // Drag & Drop для Excel файлов
         elements.dragDropArea.addEventListener('click', function() {
             elements.xlsxInput.click();
@@ -942,6 +1603,7 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 elements.modal.style.display = 'none';
+                elements.mapModal.style.display = 'none';
                 editingId = null;
             }
             if (e.key === 'Enter' && e.ctrlKey) {
@@ -952,7 +1614,16 @@
             }
         });
 
-        // Инициализация
+        // Обработчик изменения размера окна для карты
+        window.addEventListener('resize', function() {
+            if (map && elements.mapModal.style.display === 'flex') {
+                setTimeout(() => {
+                    map.invalidateSize(true);
+                }, 100);
+            }
+        });
+
+        // Инициализация при загрузке
         loadData();
         updateStats();
         renderRequestList();

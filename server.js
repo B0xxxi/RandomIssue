@@ -11,64 +11,9 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const DATA_FILE = path.join(__dirname, 'requests.json');
 
-// Security middleware
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-        },
-    },
-}));
-
-// Compression middleware
-app.use(compression());
-
-// Logging middleware
-if (NODE_ENV === 'development') {
-    app.use(morgan('dev'));
-} else {
-    app.use(morgan('combined'));
-}
-
-// CORS middleware
-app.use(cors({
-    origin: NODE_ENV === 'production' ? false : true,
-    credentials: true
-}));
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Rate limiting for API endpoints
-const requestCounts = new Map();
-const rateLimit = (req, res, next) => {
-    const ip = req.ip;
-    const now = Date.now();
-    const windowMs = 60 * 1000; // 1 minute
-    const maxRequests = 100;
-    
-    if (!requestCounts.has(ip)) {
-        requestCounts.set(ip, []);
-    }
-    
-    const requests = requestCounts.get(ip);
-    const validRequests = requests.filter(time => now - time < windowMs);
-    
-    if (validRequests.length >= maxRequests) {
-        return res.status(429).json({ error: 'Too many requests' });
-    }
-    
-    validRequests.push(now);
-    requestCounts.set(ip, validRequests);
-    next();
-};
-
-// Apply rate limiting to API routes
-app.use('/api', rateLimit);
+// Middleware
+app.use(cors());
+app.use(express.json());
 
 // Serve static files from dist directory in production, or current directory in development
 const staticDir = fs.existsSync(path.join(__dirname, 'dist')) ? 'dist' : __dirname;
