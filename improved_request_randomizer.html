@@ -634,6 +634,77 @@
             margin-bottom: 0;
         }
 
+        /* Стили для связывания заявок с клубами */
+        .club-selector {
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+
+        .club-selector select {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            color: var(--text);
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .club-selector select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+
+        .club-selector option {
+            background: var(--card-bg);
+            color: var(--text);
+        }
+
+        .club-info {
+            font-size: 0.75rem;
+            color: var(--accent-light);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .club-info svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .linked-requests {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .linked-requests h4 {
+            font-size: 0.875rem;
+            color: var(--accent-light);
+            margin-bottom: 8px;
+        }
+
+        .linked-request-item {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 6px;
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .export-import-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 768px) {
             .map-modal-content {
                 width: 100%;
@@ -720,6 +791,11 @@
                 <button class="btn btn-secondary btn-small" id="exportBtn">📤 Экспорт</button>
             </div>
 
+            <div class="export-import-controls">
+                <button class="btn btn-secondary btn-small" id="exportLinkedBtn">🔗 Экспорт связей</button>
+                <button class="btn btn-secondary btn-small" id="importLinkedBtn">📥 Импорт связей</button>
+            </div>
+
             <div class="drag-drop-area" id="dragDropArea">
                 <p>📁 Перетащите Excel файл сюда или нажмите для выбора</p>
             </div>
@@ -760,6 +836,11 @@
                         <small>Поддерживаются Excel (.xlsx, .xls) и CSV файлы</small>
                     </div>
 
+                    <div class="export-import-controls">
+                        <button class="btn btn-small btn-secondary" id="exportMapLinkedBtn">🔗 Экспорт с заявками</button>
+                        <button class="btn btn-small btn-secondary" id="importMapLinkedBtn">📥 Импорт с заявками</button>
+                    </div>
+
                     <div class="map-controls">
                         <button class="btn btn-small btn-secondary" id="clearMapBtn">🗑️ Очистить</button>
                         <button class="btn btn-small btn-secondary" id="centerMapBtn">🎯 Центрировать</button>
@@ -785,21 +866,25 @@
     </div>
 
     <input type="file" id="mapFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+    <input type="file" id="linkedFileInput" accept=".xlsx,.xls" style="display:none;">
+    <input type="file" id="mapLinkedFileInput" accept=".xlsx,.xls" style="display:none;">
 
     <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Данные и состояние
         let requests = [
-            {id: 1, text: 'Заявка #1: Позвонить клиенту Иванову'},
-            {id: 2, text: 'Заявка #2: Отправить документы Петрову'},
-            {id: 3, text: 'Заявка #3: Согласовать встречу с Сидоровым'},
-            {id: 4, text: 'Заявка #4: Проверить оплату от ООО "Ромашка"'},
-            {id: 5, text: 'Заявка #5: Подготовить отчет для директора'}
+            {id: 1, text: 'Заявка #1: Позвонить клиенту Иванову', clubId: null},
+            {id: 2, text: 'Заявка #2: Отправить документы Петрову', clubId: null},
+            {id: 3, text: 'Заявка #3: Согласовать встречу с Сидоровым', clubId: null},
+            {id: 4, text: 'Заявка #4: Проверить оплату от ООО "Ромашка"', clubId: null},
+            {id: 5, text: 'Заявка #5: Подготовить отчет для директора', clubId: null}
         ];
         let currentIndex = null;
         let completedCount = 0;
         let editingId = null;
+        let nextRequestId = 6; // Счетчик для генерации ID заявок
+        let nextClubId = 1; // Счетчик для генерации ID клубов
 
         // Карта и точки
         let map = null;
@@ -840,7 +925,14 @@
             centerMapBtn: document.getElementById('centerMapBtn'),
             exportMapBtn: document.getElementById('exportMapBtn'),
             totalPoints: document.getElementById('totalPoints'),
-            selectedPoints: document.getElementById('selectedPoints')
+            selectedPoints: document.getElementById('selectedPoints'),
+            // Элементы для связывания
+            exportLinkedBtn: document.getElementById('exportLinkedBtn'),
+            importLinkedBtn: document.getElementById('importLinkedBtn'),
+            linkedFileInput: document.getElementById('linkedFileInput'),
+            exportMapLinkedBtn: document.getElementById('exportMapLinkedBtn'),
+            importMapLinkedBtn: document.getElementById('importMapLinkedBtn'),
+            mapLinkedFileInput: document.getElementById('mapLinkedFileInput')
         };
 
         // Уведомления
@@ -855,6 +947,25 @@
                 notification.classList.remove('show');
                 setTimeout(() => document.body.removeChild(notification), 300);
             }, 3000);
+        }
+
+        // Генерация ID
+        function generateRequestId() {
+            return nextRequestId++;
+        }
+
+        function generateClubId() {
+            return nextClubId++;
+        }
+
+        // Обновление счетчиков ID при загрузке данных
+        function updateIdCounters() {
+            if (requests.length > 0) {
+                nextRequestId = Math.max(...requests.map(r => r.id)) + 1;
+            }
+            if (mapPoints.length > 0) {
+                nextClubId = Math.max(...mapPoints.map(p => p.id)) + 1;
+            }
         }
 
         // Обновление статистики
@@ -894,21 +1005,40 @@
                 return;
             }
 
-            elements.requestList.innerHTML = filteredRequests.map(req => `
-                <div class="request-item" data-id="${req.id}">
-                    <div class="request-text" ${editingId === req.id ? 'contenteditable="true"' : ''}>
-                        ${req.text}
+            elements.requestList.innerHTML = filteredRequests.map(req => {
+                const linkedClub = req.clubId ? mapPoints.find(p => p.id === req.clubId) : null;
+                const clubOptions = mapPoints.map(point => 
+                    `<option value="${point.id}" ${req.clubId === point.id ? 'selected' : ''}>${point.name}</option>`
+                ).join('');
+
+                return `
+                    <div class="request-item" data-id="${req.id}">
+                        <div class="request-text" ${editingId === req.id ? 'contenteditable="true"' : ''}>
+                            ${req.text}
+                        </div>
+                        ${linkedClub ? `<div class="club-info">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                            </svg>
+                            ${linkedClub.name}
+                        </div>` : ''}
+                        <div class="club-selector">
+                            <select onchange="linkRequestToClub(${req.id}, this.value)">
+                                <option value="">Выберите клуб...</option>
+                                ${clubOptions}
+                            </select>
+                        </div>
+                        <div class="request-actions">
+                            ${editingId === req.id ? 
+                                `<button class="btn btn-success btn-small" onclick="saveEdit(${req.id})">💾 Сохранить</button>
+                                 <button class="btn btn-secondary btn-small" onclick="cancelEdit()">❌ Отмена</button>` :
+                                `<button class="btn btn-secondary btn-small" onclick="editRequest(${req.id})">✏️ Изменить</button>
+                                 <button class="btn btn-danger btn-small" onclick="deleteRequest(${req.id})">🗑️ Удалить</button>`
+                            }
+                        </div>
                     </div>
-                    <div class="request-actions">
-                        ${editingId === req.id ? 
-                            `<button class="btn btn-success btn-small" onclick="saveEdit(${req.id})">💾 Сохранить</button>
-                             <button class="btn btn-secondary btn-small" onclick="cancelEdit()">❌ Отмена</button>` :
-                            `<button class="btn btn-secondary btn-small" onclick="editRequest(${req.id})">✏️ Изменить</button>
-                             <button class="btn btn-danger btn-small" onclick="deleteRequest(${req.id})">🗑️ Удалить</button>`
-                        }
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Выбор случайной заявки
@@ -944,8 +1074,8 @@
 
         // Добавление новой заявки
         function addRequest(text) {
-            const newId = Date.now();
-            requests.push({id: newId, text: text.trim()});
+            const newId = generateRequestId();
+            requests.push({id: newId, text: text.trim(), clubId: null});
             updateStats();
             renderRequestList();
             saveData();
@@ -1026,17 +1156,169 @@
                 return;
             }
 
-            const data = requests.map((req, index) => ({
-                '№': index + 1,
-                'Заявка': req.text,
-                'Статус': 'Не выполнена'
-            }));
+            const data = requests.map((req, index) => {
+                const linkedClub = req.clubId ? mapPoints.find(p => p.id === req.clubId) : null;
+                return {
+                    '№': index + 1,
+                    'Заявка': req.text,
+                    'Статус': 'Не выполнена',
+                    'Клуб': linkedClub ? linkedClub.name : '',
+                    'Адрес клуба': linkedClub ? linkedClub.address : '',
+                    'Координаты': linkedClub ? `${linkedClub.lat}, ${linkedClub.lng}` : ''
+                };
+            });
 
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Заявки");
             XLSX.writeFile(wb, `заявки_${new Date().toLocaleDateString()}.xlsx`);
             showNotification('Файл экспортирован!');
+        }
+
+        // Экспорт связанных данных
+        function exportLinkedData() {
+            if (requests.length === 0 && mapPoints.length === 0) {
+                showNotification('Нет данных для экспорта', 'error');
+                return;
+            }
+
+            const data = {
+                requests: requests.map((req, index) => {
+                    const linkedClub = req.clubId ? mapPoints.find(p => p.id === req.clubId) : null;
+                    return {
+                        '№': index + 1,
+                        'ID заявки': req.id,
+                        'Заявка': req.text,
+                        'ID клуба': req.clubId || '',
+                        'Клуб': linkedClub ? linkedClub.name : '',
+                        'Адрес клуба': linkedClub ? linkedClub.address : '',
+                        'Координаты': linkedClub ? `${linkedClub.lat}, ${linkedClub.lng}` : ''
+                    };
+                }),
+                clubs: mapPoints.map((point, index) => {
+                    const linkedRequests = requests.filter(req => req.clubId === point.id);
+                    return {
+                        '№': index + 1,
+                        'ID клуба': point.id,
+                        'Клуб': point.name,
+                        'Адрес': point.address,
+                        'Координаты': `${point.lat}, ${point.lng}`,
+                        'Количество заявок': linkedRequests.length,
+                        'Заявки': linkedRequests.map(req => req.text).join('; ')
+                    };
+                })
+            };
+
+            const wb = XLSX.utils.book_new();
+            
+            if (data.requests.length > 0) {
+                const wsRequests = XLSX.utils.json_to_sheet(data.requests);
+                XLSX.utils.book_append_sheet(wb, wsRequests, "Заявки");
+            }
+            
+            if (data.clubs.length > 0) {
+                const wsClubs = XLSX.utils.json_to_sheet(data.clubs);
+                XLSX.utils.book_append_sheet(wb, wsClubs, "Клубы");
+            }
+
+            XLSX.writeFile(wb, `связанные_данные_${new Date().toLocaleDateString()}.xlsx`);
+            showNotification('Связанные данные экспортированы!');
+        }
+
+        // Импорт связанных данных
+        function handleLinkedDataImport(file) {
+            console.log('Импорт связанных данных:', file.name);
+            
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                showNotification('Поддерживаются только файлы Excel (.xlsx, .xls)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    let importedRequests = 0;
+                    let importedClubs = 0;
+                    let linkedConnections = 0;
+
+                    // Импорт клубов
+                    if (workbook.SheetNames.includes('Клубы')) {
+                        const clubsSheet = workbook.Sheets['Клубы'];
+                        const clubsData = XLSX.utils.sheet_to_json(clubsSheet);
+                        
+                        clubsData.forEach(row => {
+                            if (row['Клуб'] && row['Координаты']) {
+                                const coords = row['Координаты'].toString().match(/([0-9.]+)[\s,]+([0-9.]+)/);
+                                if (coords) {
+                                    const lat = parseFloat(coords[1]);
+                                    const lng = parseFloat(coords[2]);
+                                    const clubId = row['ID клуба'] || generateClubId();
+                                    
+                                    if (!mapPoints.find(p => p.id === clubId)) {
+                                        const newPoint = {
+                                            id: clubId,
+                                            name: row['Клуб'],
+                                            address: row['Адрес'] || '',
+                                            lat: lat,
+                                            lng: lng
+                                        };
+                                        mapPoints.push(newPoint);
+                                        importedClubs++;
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Импорт заявок
+                    if (workbook.SheetNames.includes('Заявки')) {
+                        const requestsSheet = workbook.Sheets['Заявки'];
+                        const requestsData = XLSX.utils.sheet_to_json(requestsSheet);
+                        
+                        requestsData.forEach(row => {
+                            if (row['Заявка']) {
+                                const requestId = row['ID заявки'] || generateRequestId();
+                                const clubId = row['ID клуба'] || null;
+                                
+                                if (!requests.find(r => r.id === requestId)) {
+                                    const newRequest = {
+                                        id: requestId,
+                                        text: row['Заявка'],
+                                        clubId: clubId
+                                    };
+                                    requests.push(newRequest);
+                                    importedRequests++;
+                                    
+                                    if (clubId) {
+                                        linkedConnections++;
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    if (importedRequests > 0 || importedClubs > 0) {
+                        updateStats();
+                        updateMapStats();
+                        renderRequestList();
+                        renderPointsList();
+                        saveData();
+                        
+                        showNotification(`Импортировано: ${importedRequests} заявок, ${importedClubs} клубов, ${linkedConnections} связей`);
+                    } else {
+                        showNotification('Не найдено данных для импорта', 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Ошибка импорта:', error);
+                    showNotification('Ошибка при импорте файла', 'error');
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
         }
 
         // Обработка Excel файлов
@@ -1090,8 +1372,9 @@
                                 duplicates++;
                             } else {
                                 requests.push({
-                                    id: Date.now() + Math.random() + index,
-                                    text: text
+                                    id: generateRequestId(),
+                                    text: text,
+                                    clubId: null
                                 });
                                 added++;
                             }
@@ -1124,7 +1407,9 @@
             const data = {
                 requests: requests,
                 completedCount: completedCount,
-                mapPoints: mapPoints
+                mapPoints: mapPoints,
+                nextRequestId: nextRequestId,
+                nextClubId: nextClubId
             };
             localStorage.setItem('requestsData', JSON.stringify(data));
         }
@@ -1135,6 +1420,11 @@
                 if (data.requests) requests = data.requests;
                 if (data.completedCount) completedCount = data.completedCount;
                 if (data.mapPoints) mapPoints = data.mapPoints;
+                if (data.nextRequestId) nextRequestId = data.nextRequestId;
+                if (data.nextClubId) nextClubId = data.nextClubId;
+                
+                // Обновляем счетчики на случай, если данные были загружены без сохраненных счетчиков
+                updateIdCounters();
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
             }
@@ -1186,7 +1476,7 @@
         }
 
         function addMapPoint(point) {
-            const id = Date.now();
+            const id = generateClubId();
             const newPoint = {
                 id: id,
                 name: point.name,
@@ -1308,19 +1598,47 @@
                 return;
             }
 
-            elements.pointsList.innerHTML = filteredPoints.map(point => `
-                <div class="point-item ${selectedPointId === point.id ? 'selected' : ''}" 
-                     onclick="selectPoint(${point.id})">
-                    <div class="point-name">${point.name}</div>
-                    <div class="point-address">${point.address}</div>
-                    <div class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</div>
-                    <div style="margin-top: 8px;">
-                        <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); removeMapPoint(${point.id})">
-                            🗑️ Удалить
-                        </button>
+            elements.pointsList.innerHTML = filteredPoints.map(point => {
+                const linkedRequests = requests.filter(req => req.clubId === point.id);
+                
+                return `
+                    <div class="point-item ${selectedPointId === point.id ? 'selected' : ''}" 
+                         onclick="selectPoint(${point.id})">
+                        <div class="point-name">${point.name}</div>
+                        <div class="point-address">${point.address}</div>
+                        <div class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</div>
+                        
+                        ${linkedRequests.length > 0 ? `
+                            <div class="linked-requests">
+                                <h4>Связанные заявки (${linkedRequests.length}):</h4>
+                                ${linkedRequests.map(req => `
+                                    <div class="linked-request-item">${req.text}</div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); removeMapPoint(${point.id})">
+                                🗑️ Удалить
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        // Связывание заявки с клубом
+        function linkRequestToClub(requestId, clubId) {
+            const request = requests.find(r => r.id === requestId);
+            if (request) {
+                request.clubId = clubId ? parseInt(clubId) : null;
+                saveData();
+                renderRequestList();
+                renderPointsList();
+                
+                const clubName = clubId ? mapPoints.find(p => p.id === parseInt(clubId))?.name : 'Нет';
+                showNotification(`Заявка связана с клубом: ${clubName}`);
+            }
         }
 
         function handleMapFileUpload(file) {
@@ -1389,7 +1707,7 @@
                         }
 
                         const newPoint = {
-                            id: Date.now() + index,
+                            id: generateClubId(),
                             name: name,
                             address: address || '',
                             lat: lat,
@@ -1432,18 +1750,76 @@
                 return;
             }
 
-            const data = mapPoints.map((point, index) => ({
-                '№': index + 1,
-                'Клуб': point.name,
-                'Адрес': point.address,
-                'Координаты': `${point.lat}, ${point.lng}`
-            }));
+            const data = mapPoints.map((point, index) => {
+                const linkedRequests = requests.filter(req => req.clubId === point.id);
+                return {
+                    '№': index + 1,
+                    'ID клуба': point.id,
+                    'Клуб': point.name,
+                    'Адрес': point.address,
+                    'Координаты': `${point.lat}, ${point.lng}`,
+                    'Количество заявок': linkedRequests.length,
+                    'Заявки': linkedRequests.map(req => req.text).join('; ')
+                };
+            });
 
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Точки на карте");
             XLSX.writeFile(wb, `карта_точки_${new Date().toLocaleDateString()}.xlsx`);
             showNotification('Файл с точками экспортирован!');
+        }
+
+        // Экспорт карты с заявками
+        function exportMapWithRequests() {
+            if (mapPoints.length === 0) {
+                showNotification('Нет точек для экспорта', 'error');
+                return;
+            }
+
+            const data = {
+                clubs: mapPoints.map((point, index) => {
+                    const linkedRequests = requests.filter(req => req.clubId === point.id);
+                    return {
+                        '№': index + 1,
+                        'ID клуба': point.id,
+                        'Клуб': point.name,
+                        'Адрес': point.address,
+                        'Координаты': `${point.lat}, ${point.lng}`,
+                        'Количество заявок': linkedRequests.length
+                    };
+                }),
+                requests: []
+            };
+
+            // Добавляем детализацию по заявкам
+            mapPoints.forEach(point => {
+                const linkedRequests = requests.filter(req => req.clubId === point.id);
+                linkedRequests.forEach(req => {
+                    data.requests.push({
+                        'ID заявки': req.id,
+                        'Заявка': req.text,
+                        'Клуб': point.name,
+                        'Адрес клуба': point.address,
+                        'Координаты': `${point.lat}, ${point.lng}`
+                    });
+                });
+            });
+
+            const wb = XLSX.utils.book_new();
+            
+            if (data.clubs.length > 0) {
+                const wsClubs = XLSX.utils.json_to_sheet(data.clubs);
+                XLSX.utils.book_append_sheet(wb, wsClubs, "Клубы");
+            }
+            
+            if (data.requests.length > 0) {
+                const wsRequests = XLSX.utils.json_to_sheet(data.requests);
+                XLSX.utils.book_append_sheet(wb, wsRequests, "Заявки по клубам");
+            }
+
+            XLSX.writeFile(wb, `карта_с_заявками_${new Date().toLocaleDateString()}.xlsx`);
+            showNotification('Карта с заявками экспортирована!');
         }
 
         // Event Listeners
@@ -1555,6 +1931,31 @@
         elements.clearMapBtn.addEventListener('click', clearAllMapPoints);
         elements.centerMapBtn.addEventListener('click', centerMap);
         elements.exportMapBtn.addEventListener('click', exportMapPoints);
+
+        // Обработчики событий для связывания данных
+        elements.exportLinkedBtn.addEventListener('click', exportLinkedData);
+        elements.importLinkedBtn.addEventListener('click', function() {
+            elements.linkedFileInput.click();
+        });
+        elements.linkedFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleLinkedDataImport(file);
+            }
+            e.target.value = '';
+        });
+
+        elements.exportMapLinkedBtn.addEventListener('click', exportMapWithRequests);
+        elements.importMapLinkedBtn.addEventListener('click', function() {
+            elements.mapLinkedFileInput.click();
+        });
+        elements.mapLinkedFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleLinkedDataImport(file);
+            }
+            e.target.value = '';
+        });
 
         // Drag & Drop для файлов карты
         elements.mapFileUpload.addEventListener('dragover', function(e) {
