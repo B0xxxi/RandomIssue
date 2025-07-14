@@ -1,13 +1,38 @@
 {
   "name": "random-requests-server",
   "version": "1.0.0",
+  "description": "Рандомизатор заявок клиентов - система случайного выбора заявок",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'Building project...' && npm run copy-files",
+    "copy-files": "mkdir -p dist && cp improved_request_randomizer.html dist/index.html && cp server.js dist/ && cp package.json dist/ && cp requests.json dist/ 2>/dev/null || true",
+    "serve": "npm run build && npm start",
+    "deploy": "npm run build && echo 'Ready for deployment - files in dist folder'",
+    "clean": "rm -rf dist",
+    "test": "echo 'No tests specified' && exit 0"
   },
+  "keywords": [
+    "randomizer",
+    "requests",
+    "client-management",
+    "web-app"
+  ],
+  "author": "B0xxxi",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B0xxxi/RandomIssue.git"
   }
 } 

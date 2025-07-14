@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рандомизатор заявок клиентов</title>
+    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/u/117104599?v=4">
+    <style>
+        :root {
+            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-dark: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+            --accent: #10b981;
+            --accent-light: #34d399;
+            --bg: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --text: #f7fafc;
+            --text-muted: #a0aec0;
+            --input-bg: rgba(255, 255, 255, 0.1);
+            --input-border: rgba(255, 255, 255, 0.2);
+            --danger: #f56565;
+            --success: #48bb78;
+            --warning: #ed8936;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            background-attachment: fixed;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+        }
+
+        h1 {
+            background: var(--primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            font-size: 1.1rem;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            flex: 1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-light);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .current-request {
+            background: rgba(16, 185, 129, 0.1);
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--accent-light);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .current-request.animate {
+            animation: pulse 0.6s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin: 16px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin: 24px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            position: relative;
+            overflow: hidden;
+            min-width: 120px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, var(--accent) 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger) 0%, #e53e3e 100%);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .input-group {
+            margin: 24px 0;
+        }
+
+        .input {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            color: var(--text);
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .add-form {
+            display: flex;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .add-form .input {
+            flex: 1;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent-light);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+
+        .request-list {
+            flex: 1;
+            overflow-y: auto;
+            margin: 12px 0;
+            max-height: 400px;
+        }
+
+        .request-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .request-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+
+        .request-text {
+            flex: 1;
+            color: var(--text);
+            word-break: break-word;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            min-width: auto;
+        }
+
+        .drag-drop-area {
+            border: 2px dashed var(--input-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 12px 0;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .drag-drop-area:hover,
+        .drag-drop-area.dragover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: var(--text);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+            max-width: 300px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .search-input {
+            padding-left: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .add-form {
+                flex-direction: column;
+            }
+
+            .request-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .request-actions {
+                align-self: stretch;
+                justify-content: flex-end;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 Рандомизатор заявок</h1>
+        <p class="subtitle">Система случайного выбора заявок клиентов</p>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalRequests">0</div>
+                <div class="stat-label">Всего заявок</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedRequests">0</div>
+                <div class="stat-label">Выполнено</div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="current-request" id="requestField">
+            Нажмите "Выбрать заявку" для начала работы
+        </div>
+
+        <div class="button-group">
+            <button class="btn" id="randomBtn">🎲 Бросить кости на заявку</button>
+            <button class="btn btn-success" id="doneBtn" disabled>✅ Выполнено</button>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-secondary" id="showListBtn">📋 Управление заявками</button>
+            <button class="btn btn-secondary" id="uploadXlsxBtn">📊 Загрузить Excel</button>
+        </div>
+
+        <form class="add-form" id="addForm">
+            <input type="text" class="input" id="addInput" placeholder="Добавить новую заявку..." required>
+            <button type="submit" class="btn">➕ Добавить</button>
+        </form>
+
+        <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none;">
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Управление заявками</h3>
+                <button class="close-btn" id="closeModalBtn">✕</button>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="input search-input" id="searchInput" placeholder="Поиск заявок...">
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-danger btn-small" id="deleteAllBtn">🗑️ Удалить все</button>
+                <button class="btn btn-secondary btn-small" id="resetCompletedBtn">🔄 Сбросить выполненные</button>
+                <button class="btn btn-secondary btn-small" id="exportBtn">📤 Экспорт</button>
+            </div>
+
+            <div class="drag-drop-area" id="dragDropArea">
+                <p>📁 Перетащите Excel файл сюда или нажмите для выбора</p>
+            </div>
+
+            <div class="request-list" id="requestList">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    <p>Заявки отсутствуют</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        // Данные и состояние
+        let requests = [
+            {id: 1, text: 'Заявка #1: Позвонить клиенту Иванову'},
+            {id: 2, text: 'Заявка #2: Отправить документы Петрову'},
+            {id: 3, text: 'Заявка #3: Согласовать встречу с Сидоровым'},
+            {id: 4, text: 'Заявка #4: Проверить оплату от ООО "Ромашка"'},
+            {id: 5, text: 'Заявка #5: Подготовить отчет для директора'}
+        ];
+        let currentIndex = null;
+        let completedCount = 0;
+        let editingId = null;
+
+        // DOM элементы
+        const elements = {
+            requestField: document.getElementById('requestField'),
+            randomBtn: document.getElementById('randomBtn'),
+            doneBtn: document.getElementById('doneBtn'),
+            addForm: document.getElementById('addForm'),
+            addInput: document.getElementById('addInput'),
+            requestList: document.getElementById('requestList'),
+            showListBtn: document.getElementById('showListBtn'),
+            modal: document.getElementById('modal'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            searchInput: document.getElementById('searchInput'),
+            uploadXlsxBtn: document.getElementById('uploadXlsxBtn'),
+            xlsxInput: document.getElementById('xlsxInput'),
+            deleteAllBtn: document.getElementById('deleteAllBtn'),
+            resetCompletedBtn: document.getElementById('resetCompletedBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            dragDropArea: document.getElementById('dragDropArea'),
+            totalRequests: document.getElementById('totalRequests'),
+            completedRequests: document.getElementById('completedRequests'),
+            progressFill: document.getElementById('progressFill')
+        };
+
+        // Уведомления
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        // Обновление статистики
+        function updateStats() {
+            const total = requests.length + completedCount;
+            elements.totalRequests.textContent = total;
+            elements.completedRequests.textContent = completedCount;
+            
+            const progress = total > 0 ? (completedCount / total) * 100 : 0;
+            elements.progressFill.style.width = `${progress}%`;
+
+            if (requests.length === 0) {
+                elements.requestField.textContent = '🎉 Все заявки выполнены!';
+                elements.randomBtn.disabled = true;
+                elements.doneBtn.disabled = true;
+            } else {
+                elements.randomBtn.disabled = false;
+            }
+        }
+
+        // Рендеринг списка заявок
+        function renderRequestList() {
+            const searchTerm = elements.searchInput.value.toLowerCase();
+            const filteredRequests = requests.filter(req => 
+                req.text.toLowerCase().includes(searchTerm)
+            );
+
+            if (filteredRequests.length === 0) {
+                elements.requestList.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <p>${searchTerm ? 'Заявки не найдены' : 'Заявки отсутствуют'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.requestList.innerHTML = filteredRequests.map(req => `
+                <div class="request-item" data-id="${req.id}">
+                    <div class="request-text" ${editingId === req.id ? 'contenteditable="true"' : ''}>
+                        ${req.text}
+                    </div>
+                    <div class="request-actions">
+                        ${editingId === req.id ? 
+                            `<button class="btn btn-success btn-small" onclick="saveEdit(${req.id})">💾 Сохранить</button>
+                             <button class="btn btn-secondary btn-small" onclick="cancelEdit()">❌ Отмена</button>` :
+                            `<button class="btn btn-secondary btn-small" onclick="editRequest(${req.id})">✏️ Изменить</button>
+                             <button class="btn btn-danger btn-small" onclick="deleteRequest(${req.id})">🗑️ Удалить</button>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Выбор случайной заявки
+        function showRandomRequest() {
+            if (requests.length === 0) return;
+
+            elements.requestField.classList.add('animate');
+            setTimeout(() => elements.requestField.classList.remove('animate'), 600);
+
+            currentIndex = Math.floor(Math.random() * requests.length);
+            const req = requests[currentIndex];
+            elements.requestField.textContent = req.text;
+            elements.doneBtn.disabled = false;
+        }
+
+        // Отметка как выполненная
+        function markAsDone() {
+            if (currentIndex === null || requests.length === 0) return;
+
+            const completedRequest = requests[currentIndex];
+            requests.splice(currentIndex, 1);
+            completedCount++;
+            currentIndex = null;
+            
+            elements.requestField.textContent = 'Заявка не выбрана';
+            elements.doneBtn.disabled = true;
+            
+            updateStats();
+            renderRequestList();
+            saveData();
+            showNotification('Заявка выполнена! 🎉');
+        }
+
+        // Добавление новой заявки
+        function addRequest(text) {
+            const newId = Date.now();
+            requests.push({id: newId, text: text.trim()});
+            updateStats();
+            renderRequestList();
+            saveData();
+            showNotification('Заявка добавлена!');
+        }
+
+        // Редактирование заявки
+        function editRequest(id) {
+            editingId = id;
+            renderRequestList();
+            const element = document.querySelector(`[data-id="${id}"] .request-text`);
+            element.focus();
+        }
+
+        function saveEdit(id) {
+            const element = document.querySelector(`[data-id="${id}"] .request-text`);
+            const newText = element.textContent.trim();
+            
+            if (newText) {
+                const request = requests.find(r => r.id === id);
+                request.text = newText;
+                saveData();
+                showNotification('Заявка обновлена!');
+            }
+            
+            editingId = null;
+            renderRequestList();
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            renderRequestList();
+        }
+
+        // Удаление заявки
+        function deleteRequest(id) {
+            if (confirm('Удалить эту заявку?')) {
+                requests = requests.filter(r => r.id !== id);
+                updateStats();
+                renderRequestList();
+                saveData();
+                showNotification('Заявка удалена!', 'error');
+            }
+        }
+
+        // Удаление всех заявок
+        function deleteAllRequests() {
+            if (confirm('Вы уверены, что хотите удалить все заявки? Это действие необратимо.')) {
+                requests = [];
+                completedCount = 0;
+                updateStats();
+                renderRequestList();
+                saveData();
+                elements.requestField.textContent = 'Нажмите "Выбрать заявку" для начала работы';
+                showNotification('Все заявки удалены!', 'error');
+            }
+        }
+
+        // Сброс выполненных заявок
+        function resetCompletedRequests() {
+            if (completedCount === 0) {
+                showNotification('Нет выполненных заявок для сброса', 'error');
+                return;
+            }
+            
+            if (confirm(`Сбросить счетчик выполненных заявок (${completedCount})? Это действие необратимо.`)) {
+                completedCount = 0;
+                updateStats();
+                saveData();
+                showNotification('Счетчик выполненных заявок сброшен!');
+            }
+        }
+
+        // Экспорт в Excel
+        function exportToExcel() {
+            if (requests.length === 0) {
+                showNotification('Нет заявок для экспорта', 'error');
+                return;
+            }
+
+            const data = requests.map((req, index) => ({
+                '№': index + 1,
+                'Заявка': req.text,
+                'Статус': 'Не выполнена'
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Заявки");
+            XLSX.writeFile(wb, `заявки_${new Date().toLocaleDateString()}.xlsx`);
+            showNotification('Файл экспортирован!');
+        }
+
+        // Обработка Excel файлов
+        function handleFileUpload(file) {
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                showNotification('Поддерживаются только файлы Excel (.xlsx, .xls)', 'error');
+                return;
+            }
+
+            if (file.size > 2 * 1024 * 1024) {
+                showNotification('Файл слишком большой (максимум 2 МБ)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
+                    let added = 0;
+                    rows.forEach((row, index) => {
+                        if (index === 0 || !row[0]) return; // Пропускаем заголовок и пустые строки
+                        
+                        let text = '';
+                        if (row[0] && row[10]) {
+                            // Формат: Номер — Контакт
+                            text = `Заявка: ${row[0]} — ${row[10]}`;
+                        } else if (row[0]) {
+                            // Просто текст заявки
+                            text = row[0].toString().trim();
+                        }
+                        
+                        if (text && !requests.some(r => r.text === text)) {
+                            requests.push({id: Date.now() + index, text});
+                            added++;
+                        }
+                    });
+
+                    if (added > 0) {
+                        updateStats();
+                        renderRequestList();
+                        saveData();
+                        showNotification(`Добавлено заявок: ${added}`);
+                    } else {
+                        showNotification('Новых заявок не найдено', 'error');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка при обработке файла', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Сохранение и загрузка данных
+        function saveData() {
+            const data = {
+                requests: requests,
+                completedCount: completedCount
+            };
+            localStorage.setItem('requestsData', JSON.stringify(data));
+        }
+
+        function loadData() {
+            try {
+                const data = JSON.parse(localStorage.getItem('requestsData') || '{}');
+                if (data.requests) requests = data.requests;
+                if (data.completedCount) completedCount = data.completedCount;
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+            }
+        }
+
+        // Event Listeners
+        elements.randomBtn.addEventListener('click', showRandomRequest);
+        elements.doneBtn.addEventListener('click', markAsDone);
+
+        elements.addForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const text = elements.addInput.value.trim();
+            if (text) {
+                addRequest(text);
+                elements.addInput.value = '';
+            }
+        });
+
+        elements.showListBtn.addEventListener('click', function() {
+            elements.modal.style.display = 'flex';
+            renderRequestList();
+        });
+
+        elements.closeModalBtn.addEventListener('click', function() {
+            elements.modal.style.display = 'none';
+            editingId = null;
+        });
+
+        elements.modal.addEventListener('click', function(e) {
+            if (e.target === elements.modal) {
+                elements.modal.style.display = 'none';
+                editingId = null;
+            }
+        });
+
+        elements.searchInput.addEventListener('input', renderRequestList);
+
+        elements.uploadXlsxBtn.addEventListener('click', function() {
+            elements.xlsxInput.click();
+        });
+
+        elements.xlsxInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileUpload(file);
+                e.target.value = '';
+            }
+        });
+
+        elements.deleteAllBtn.addEventListener('click', deleteAllRequests);
+        elements.resetCompletedBtn.addEventListener('click', resetCompletedRequests);
+        elements.exportBtn.addEventListener('click', exportToExcel);
+
+        // Drag & Drop для Excel файлов
+        elements.dragDropArea.addEventListener('click', function() {
+            elements.xlsxInput.click();
+        });
+
+        elements.dragDropArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            elements.dragDropArea.classList.add('dragover');
+        });
+
+        elements.dragDropArea.addEventListener('dragleave', function() {
+            elements.dragDropArea.classList.remove('dragover');
+        });
+
+        elements.dragDropArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            elements.dragDropArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                elements.modal.style.display = 'none';
+                editingId = null;
+            }
+            if (e.key === 'Enter' && e.ctrlKey) {
+                showRandomRequest();
+            }
+            if (e.key === 'Enter' && e.shiftKey && !elements.doneBtn.disabled) {
+                markAsDone();
+            }
+        });
+
+        // Инициализация
+        loadData();
+        updateStats();
+        renderRequestList();
+    </script>
+</body>
+</html>
