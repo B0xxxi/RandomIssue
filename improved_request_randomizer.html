@@ -535,7 +535,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
         // Данные и состояние
         let requests = [
@@ -770,6 +770,8 @@
 
         // Обработка Excel файлов
         function handleFileUpload(file) {
+            console.log('Загрузка файла:', file.name, 'Размер:', file.size);
+            
             if (!file.name.match(/\.(xlsx|xls)$/i)) {
                 showNotification('Поддерживаются только файлы Excel (.xlsx, .xls)', 'error');
                 return;
@@ -780,6 +782,8 @@
                 return;
             }
 
+            showNotification('Обработка файла...', 'info');
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -789,21 +793,37 @@
                     const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
 
                     let added = 0;
+                    let duplicates = 0;
+                    
                     rows.forEach((row, index) => {
-                        if (index === 0 || !row[0]) return; // Пропускаем заголовок и пустые строки
+                        if (index === 0 || !row || row.length === 0) return; // Пропускаем заголовок и пустые строки
                         
                         let text = '';
-                        if (row[0] && row[10]) {
-                            // Формат: Номер — Контакт
-                            text = `Заявка: ${row[0]} — ${row[10]}`;
+                        
+                        // Приоритет: столбец K (10), затем столбец A (0)
+                        if (row[10]) {
+                            // Контактное лицо из столбца K
+                            let contact = row[10].toString().trim();
+                            // Если есть слэш, берем часть после последнего слэша
+                            if (contact.includes('/')) {
+                                contact = contact.split('/').pop().trim();
+                            }
+                            text = `${row[0] || 'Заявка'} — ${contact}`;
                         } else if (row[0]) {
-                            // Просто текст заявки
+                            // Просто номер/текст из столбца A
                             text = row[0].toString().trim();
                         }
                         
-                        if (text && !requests.some(r => r.text === text)) {
-                            requests.push({id: Date.now() + index, text});
-                            added++;
+                        if (text) {
+                            if (requests.some(r => r.text === text)) {
+                                duplicates++;
+                            } else {
+                                requests.push({
+                                    id: Date.now() + Math.random() + index,
+                                    text: text
+                                });
+                                added++;
+                            }
                         }
                     });
 
@@ -811,14 +831,20 @@
                         updateStats();
                         renderRequestList();
                         saveData();
-                        showNotification(`Добавлено заявок: ${added}`);
+                        showNotification(`✅ Добавлено заявок: ${added}` + 
+                            (duplicates > 0 ? ` (пропущено дубликатов: ${duplicates})` : ''));
+                    } else if (duplicates > 0) {
+                        showNotification(`⚠️ Все заявки уже существуют (найдено дубликатов: ${duplicates})`, 'warning');
                     } else {
-                        showNotification('Новых заявок не найдено', 'error');
+                        showNotification('❌ Не найдено данных для добавления. Проверьте столбцы A и K.', 'error');
                     }
+                    
                 } catch (error) {
-                    showNotification('Ошибка при обработке файла', 'error');
+                    console.error('Ошибка при обработке файла:', error);
+                    showNotification('Ошибка при обработке файла. Проверьте формат Excel.', 'error');
                 }
             };
+            
             reader.readAsArrayBuffer(file);
         }
 
