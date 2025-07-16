@@ -379,7 +379,8 @@
             transform: translateX(400px);
             transition: all 0.3s ease;
             z-index: 1001;
-            max-width: 300px;
+            max-width: 350px;
+            line-height: 1.4;
         }
 
         .notification.show {
@@ -392,6 +393,20 @@
 
         .notification.error {
             border-left: 4px solid var(--danger);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--accent);
+        }
+
+        .notification strong {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
         }
 
         .search-container {
@@ -518,6 +533,37 @@
             min-height: 400px;
             display: flex;
             flex-direction: column;
+        }
+
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         #map {
@@ -788,12 +834,14 @@
             <div class="button-group">
                 <button class="btn btn-danger btn-small" id="deleteAllBtn">🗑️ Удалить все</button>
                 <button class="btn btn-secondary btn-small" id="resetCompletedBtn">🔄 Сбросить выполненные</button>
-                <button class="btn btn-secondary btn-small" id="exportBtn">📤 Экспорт</button>
+                <button class="btn btn-secondary btn-small" id="exportBtn">📤 Экспорт для редактирования</button>
+                <button class="btn btn-secondary btn-small" id="exportSimpleBtn">📋 Простой экспорт</button>
             </div>
 
             <div class="export-import-controls">
                 <button class="btn btn-secondary btn-small" id="exportLinkedBtn">🔗 Экспорт связей</button>
                 <button class="btn btn-secondary btn-small" id="importLinkedBtn">📥 Импорт связей</button>
+                <button class="btn btn-secondary btn-small" id="exportTemplateBtn">📋 Шаблон связей</button>
             </div>
 
             <div class="drag-drop-area" id="dragDropArea">
@@ -844,6 +892,7 @@
                     <div class="map-controls">
                         <button class="btn btn-small btn-secondary" id="clearMapBtn">🗑️ Очистить</button>
                         <button class="btn btn-small btn-secondary" id="centerMapBtn">🎯 Центрировать</button>
+                        <button class="btn btn-small btn-secondary" id="exportMapTemplateBtn">📋 Шаблон</button>
                         <button class="btn btn-small btn-success" id="exportMapBtn">📤 Экспорт</button>
                     </div>
 
@@ -886,6 +935,143 @@
         let nextRequestId = 6; // Счетчик для генерации ID заявок
         let nextClubId = 1; // Счетчик для генерации ID клубов
 
+        // База данных популярных клубов (можно расширять)
+        const popularClubs = {
+            'фитнес': {
+                address: 'ул. Спортивная, 10',
+                lat: 55.7558,
+                lng: 37.6176
+            },
+            'спортзал': {
+                address: 'ул. Олимпийская, 5',
+                lat: 55.7600,
+                lng: 37.6200
+            },
+            'тренажерный зал': {
+                address: 'пр. Победы, 15',
+                lat: 55.7500,
+                lng: 37.6100
+            },
+            'тренажерка': {
+                address: 'пр. Победы, 15',
+                lat: 55.7500,
+                lng: 37.6100
+            },
+            'бассейн': {
+                address: 'ул. Водная, 20',
+                lat: 55.7650,
+                lng: 37.6250
+            },
+            'теннисный корт': {
+                address: 'ул. Теннисная, 8',
+                lat: 55.7580,
+                lng: 37.6150
+            },
+            'теннис': {
+                address: 'ул. Теннисная, 8',
+                lat: 55.7580,
+                lng: 37.6150
+            },
+            'йога': {
+                address: 'ул. Медитативная, 12',
+                lat: 55.7520,
+                lng: 37.6180
+            },
+            'пилатес': {
+                address: 'ул. Гибкости, 7',
+                lat: 55.7540,
+                lng: 37.6160
+            },
+            'бокс': {
+                address: 'ул. Бойцовская, 3',
+                lat: 55.7590,
+                lng: 37.6210
+            },
+            'карате': {
+                address: 'ул. Воинская, 18',
+                lat: 55.7570,
+                lng: 37.6190
+            },
+            'дзюдо': {
+                address: 'ул. Воинская, 18',
+                lat: 55.7570,
+                lng: 37.6190
+            },
+            'танцы': {
+                address: 'ул. Танцевальная, 25',
+                lat: 55.7610,
+                lng: 37.6170
+            },
+            'студия': {
+                address: 'ул. Творческая, 14',
+                lat: 55.7530,
+                lng: 37.6140
+            },
+            'клуб': {
+                address: 'ул. Центральная, 1',
+                lat: 55.7560,
+                lng: 37.6185
+            },
+            'центр': {
+                address: 'ул. Центральная, 1',
+                lat: 55.7560,
+                lng: 37.6185
+            },
+            'стадион': {
+                address: 'ул. Стадионная, 50',
+                lat: 55.7620,
+                lng: 37.6220
+            },
+            'парк': {
+                address: 'Парковая зона',
+                lat: 55.7580,
+                lng: 37.6200
+            }
+        };
+
+        // Функция для автоматического определения данных клуба
+        function getClubData(clubName) {
+            const name = clubName.toLowerCase().trim();
+            
+            // Поиск по ключевым словам (сначала более специфичные, потом общие)
+            const keywords = Object.keys(popularClubs).sort((a, b) => b.length - a.length);
+            
+            for (const keyword of keywords) {
+                if (name.includes(keyword)) {
+                    const data = popularClubs[keyword];
+                    return {
+                        address: data.address,
+                        lat: data.lat + (Math.random() - 0.5) * 0.01, // Небольшая случайность
+                        lng: data.lng + (Math.random() - 0.5) * 0.01
+                    };
+                }
+            }
+            
+            // Если не найдено по ключевым словам, пытаемся определить по контексту
+            if (name.includes('спорт')) {
+                return {
+                    address: 'Спортивный комплекс',
+                    lat: 55.7558 + (Math.random() - 0.5) * 0.02,
+                    lng: 37.6176 + (Math.random() - 0.5) * 0.02
+                };
+            }
+            
+            if (name.includes('школа')) {
+                return {
+                    address: 'Образовательное учреждение',
+                    lat: 55.7558 + (Math.random() - 0.5) * 0.02,
+                    lng: 37.6176 + (Math.random() - 0.5) * 0.02
+                };
+            }
+            
+            // Если не найдено, возвращаем данные по умолчанию (центр Москвы)
+            return {
+                address: 'Москва (адрес уточняется)',
+                lat: 55.7558 + (Math.random() - 0.5) * 0.02,
+                lng: 37.6176 + (Math.random() - 0.5) * 0.02
+            };
+        }
+
         // Карта и точки
         let map = null;
         let mapPoints = [];
@@ -909,6 +1095,7 @@
             deleteAllBtn: document.getElementById('deleteAllBtn'),
             resetCompletedBtn: document.getElementById('resetCompletedBtn'),
             exportBtn: document.getElementById('exportBtn'),
+            exportSimpleBtn: document.getElementById('exportSimpleBtn'),
             dragDropArea: document.getElementById('dragDropArea'),
             totalRequests: document.getElementById('totalRequests'),
             completedRequests: document.getElementById('completedRequests'),
@@ -924,11 +1111,13 @@
             clearMapBtn: document.getElementById('clearMapBtn'),
             centerMapBtn: document.getElementById('centerMapBtn'),
             exportMapBtn: document.getElementById('exportMapBtn'),
+            exportMapTemplateBtn: document.getElementById('exportMapTemplateBtn'),
             totalPoints: document.getElementById('totalPoints'),
             selectedPoints: document.getElementById('selectedPoints'),
             // Элементы для связывания
             exportLinkedBtn: document.getElementById('exportLinkedBtn'),
             importLinkedBtn: document.getElementById('importLinkedBtn'),
+            exportTemplateBtn: document.getElementById('exportTemplateBtn'),
             linkedFileInput: document.getElementById('linkedFileInput'),
             exportMapLinkedBtn: document.getElementById('exportMapLinkedBtn'),
             importMapLinkedBtn: document.getElementById('importMapLinkedBtn'),
@@ -939,14 +1128,14 @@
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
-            notification.textContent = message;
+            notification.innerHTML = message; // Используем innerHTML для поддержки HTML
             document.body.appendChild(notification);
             
             setTimeout(() => notification.classList.add('show'), 100);
             setTimeout(() => {
                 notification.classList.remove('show');
                 setTimeout(() => document.body.removeChild(notification), 300);
-            }, 3000);
+            }, type === 'info' ? 5000 : 3000); // Информационные сообщения показываем дольше
         }
 
         // Генерация ID
@@ -960,16 +1149,19 @@
 
         // Обновление счетчиков ID при загрузке данных
         function updateIdCounters() {
-            if (requests.length > 0) {
+            if (requests && requests.length > 0) {
                 nextRequestId = Math.max(...requests.map(r => r.id)) + 1;
             }
-            if (mapPoints.length > 0) {
+            if (mapPoints && mapPoints.length > 0) {
                 nextClubId = Math.max(...mapPoints.map(p => p.id)) + 1;
             }
         }
 
         // Обновление статистики
         function updateStats() {
+            // Убеждаемся, что requests инициализирован
+            if (!requests) requests = [];
+            
             const total = requests.length + completedCount;
             elements.totalRequests.textContent = total;
             elements.completedRequests.textContent = completedCount;
@@ -988,6 +1180,10 @@
 
         // Рендеринг списка заявок
         function renderRequestList() {
+            // Убеждаемся, что массивы инициализированы
+            if (!requests) requests = [];
+            if (!mapPoints) mapPoints = [];
+            
             const searchTerm = elements.searchInput.value.toLowerCase();
             const filteredRequests = requests.filter(req => 
                 req.text.toLowerCase().includes(searchTerm)
@@ -1043,7 +1239,8 @@
 
         // Выбор случайной заявки
         function showRandomRequest() {
-            if (requests.length === 0) return;
+            // Убеждаемся, что requests инициализирован
+            if (!requests || requests.length === 0) return;
 
             elements.requestField.classList.add('animate');
             setTimeout(() => elements.requestField.classList.remove('animate'), 600);
@@ -1055,31 +1252,37 @@
         }
 
         // Отметка как выполненная
-        function markAsDone() {
-            if (currentIndex === null || requests.length === 0) return;
+        async function markAsDone() {
+            if (currentIndex === null || !requests || requests.length === 0) return;
 
             const completedRequest = requests[currentIndex];
-            requests.splice(currentIndex, 1);
-            completedCount++;
-            currentIndex = null;
+            const result = await APIWithLoading.completeRequest(completedRequest.id);
             
-            elements.requestField.textContent = 'Заявка не выбрана';
-            elements.doneBtn.disabled = true;
-            
-            updateStats();
-            renderRequestList();
-            saveData();
-            showNotification('Заявка выполнена! 🎉');
+            if (result.success) {
+                requests.splice(currentIndex, 1);
+                completedCount++;
+                currentIndex = null;
+                
+                elements.requestField.textContent = 'Заявка не выбрана';
+                elements.doneBtn.disabled = true;
+                
+                updateStats();
+                renderRequestList();
+                showNotification('Заявка выполнена! 🎉', 'success');
+            }
         }
 
         // Добавление новой заявки
-        function addRequest(text) {
-            const newId = generateRequestId();
-            requests.push({id: newId, text: text.trim(), clubId: null});
-            updateStats();
-            renderRequestList();
-            saveData();
-            showNotification('Заявка добавлена!');
+        async function addRequest(text) {
+            const result = await APIWithLoading.addRequest(text);
+            if (result.success) {
+                const newRequest = result.request;
+                requests.push(newRequest);
+                nextRequestId = Math.max(nextRequestId, newRequest.id + 1);
+                updateStats();
+                renderRequestList();
+                showNotification('Заявка добавлена!', 'success');
+            }
         }
 
         // Редактирование заявки
@@ -1090,15 +1293,22 @@
             element.focus();
         }
 
-        function saveEdit(id) {
+        async function saveEdit(id) {
             const element = document.querySelector(`[data-id="${id}"] .request-text`);
             const newText = element.textContent.trim();
             
             if (newText) {
                 const request = requests.find(r => r.id === id);
-                request.text = newText;
-                saveData();
-                showNotification('Заявка обновлена!');
+                const result = await APIWithLoading.updateRequest(id, newText, request.clubId);
+                
+                if (result.success) {
+                    request.text = newText;
+                    showNotification('Заявка обновлена!', 'success');
+                } else {
+                    // Откатываем изменения в UI
+                    renderRequestList();
+                    return;
+                }
             }
             
             editingId = null;
@@ -1111,31 +1321,46 @@
         }
 
         // Удаление заявки
-        function deleteRequest(id) {
+        async function deleteRequest(id) {
             if (confirm('Удалить эту заявку?')) {
-                requests = requests.filter(r => r.id !== id);
-                updateStats();
-                renderRequestList();
-                saveData();
-                showNotification('Заявка удалена!', 'error');
+                const result = await APIWithLoading.deleteRequest(id);
+                if (result.success) {
+                    requests = requests.filter(r => r.id !== id);
+                    updateStats();
+                    renderRequestList();
+                    showNotification('Заявка удалена!', 'success');
+                }
             }
         }
 
         // Удаление всех заявок
-        function deleteAllRequests() {
+        async function deleteAllRequests() {
+            // Убеждаемся, что requests инициализирован
+            if (!requests || requests.length === 0) {
+                showNotification('Нет заявок для удаления', 'info');
+                return;
+            }
+            
             if (confirm('Вы уверены, что хотите удалить все заявки? Это действие необратимо.')) {
-                requests = [];
-                completedCount = 0;
-                updateStats();
-                renderRequestList();
-                saveData();
-                elements.requestField.textContent = 'Нажмите "Выбрать заявку" для начала работы';
-                showNotification('Все заявки удалены!', 'error');
+                // Удаляем все заявки по одной через API
+                const deletePromises = requests.map(req => APIWithLoading.deleteRequest(req.id));
+                const results = await Promise.all(deletePromises);
+                
+                if (results.every(r => r.success)) {
+                    requests = [];
+                    completedCount = 0;
+                    updateStats();
+                    renderRequestList();
+                    elements.requestField.textContent = 'Нажмите "Выбрать заявку" для начала работы';
+                    showNotification('Все заявки удалены!', 'success');
+                } else {
+                    showNotification('Не удалось удалить все заявки', 'error');
+                }
             }
         }
 
         // Сброс выполненных заявок
-        function resetCompletedRequests() {
+        async function resetCompletedRequests() {
             if (completedCount === 0) {
                 showNotification('Нет выполненных заявок для сброса', 'error');
                 return;
@@ -1144,20 +1369,88 @@
             if (confirm(`Сбросить счетчик выполненных заявок (${completedCount})? Это действие необратимо.`)) {
                 completedCount = 0;
                 updateStats();
-                saveData();
+                await saveData();
                 showNotification('Счетчик выполненных заявок сброшен!');
             }
         }
 
-        // Экспорт в Excel
+        // Экспорт в Excel для редактирования
         function exportToExcel() {
-            if (requests.length === 0) {
+            // Убеждаемся, что requests инициализирован
+            if (!requests || requests.length === 0) {
                 showNotification('Нет заявок для экспорта', 'error');
                 return;
             }
 
             const data = requests.map((req, index) => {
-                const linkedClub = req.clubId ? mapPoints.find(p => p.id === req.clubId) : null;
+                const linkedClub = req.clubId && mapPoints ? mapPoints.find(p => p.id === req.clubId) : null;
+                return {
+                    'ID': req.id,
+                    '№': index + 1,
+                    'Заявка': req.text,
+                    'Клуб': linkedClub ? linkedClub.name : '',
+                    'Статус': 'Не выполнена'
+                };
+            });
+
+            // Добавляем инструкции и примеры
+            const instructions = [
+                {
+                    'ID': 'ИНСТРУКЦИЯ:',
+                    '№': '',
+                    'Заявка': 'Заполните колонку "Клуб" названием клуба',
+                    'Клуб': 'Адрес и координаты определятся автоматически',
+                    'Статус': 'Не изменяйте'
+                },
+                {
+                    'ID': 'ПРИМЕР:',
+                    '№': '',
+                    'Заявка': 'Позвонить клиенту',
+                    'Клуб': 'Спортзал "Олимп"',
+                    'Статус': 'Не выполнена'
+                },
+                {
+                    'ID': '───────',
+                    '№': '',
+                    'Заявка': '───────────────────────',
+                    'Клуб': '─────────────────',
+                    'Статус': '───────────'
+                }
+            ];
+
+            const allData = [...instructions, ...data];
+            const ws = XLSX.utils.json_to_sheet(allData);
+            
+            // Настраиваем ширину колонок
+            ws['!cols'] = [
+                {wch: 8},   // ID
+                {wch: 5},   // №
+                {wch: 50},  // Заявка
+                {wch: 30},  // Клуб
+                {wch: 15}   // Статус
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Заявки для редактирования");
+            XLSX.writeFile(wb, `заявки_для_редактирования_${new Date().toLocaleDateString()}.xlsx`);
+            showNotification(`
+                📊 <strong>Файл для редактирования экспортирован!</strong><br>
+                📝 Заполните колонку "Клуб" названиями клубов<br>
+                🏢 Адрес и координаты определятся автоматически<br>
+                📥 Импортируйте файл обратно для связывания
+            `, 'info');
+        }
+
+        // Простой экспорт (как было раньше)
+        function exportSimple() {
+            // Убеждаемся, что requests инициализирован
+            if (!requests || requests.length === 0) {
+                showNotification('Нет заявок для экспорта', 'error');
+                return;
+            }
+
+            const data = requests.map((req, index) => {
+                const linkedClub = req.clubId && mapPoints ? mapPoints.find(p => p.id === req.clubId) : null;
                 return {
                     '№': index + 1,
                     'Заявка': req.text,
@@ -1177,6 +1470,10 @@
 
         // Экспорт связанных данных
         function exportLinkedData() {
+            // Убеждаемся, что массивы инициализированы
+            if (!requests) requests = [];
+            if (!mapPoints) mapPoints = [];
+            
             if (requests.length === 0 && mapPoints.length === 0) {
                 showNotification('Нет данных для экспорта', 'error');
                 return;
@@ -1338,59 +1635,18 @@
             showNotification('Обработка файла...', 'info');
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                    const rows = XLSX.utils.sheet_to_json(sheet);
 
-                    let added = 0;
-                    let duplicates = 0;
-                    
-                    rows.forEach((row, index) => {
-                        if (index === 0 || !row || row.length === 0) return; // Пропускаем заголовок и пустые строки
-                        
-                        let text = '';
-                        
-                        // Приоритет: столбец K (10), затем столбец A (0)
-                        if (row[10]) {
-                            // Контактное лицо из столбца K
-                            let contact = row[10].toString().trim();
-                            // Если есть слэш, берем часть после последнего слэша
-                            if (contact.includes('/')) {
-                                contact = contact.split('/').pop().trim();
-                            }
-                            text = `${row[0] || 'Заявка'} — ${contact}`;
-                        } else if (row[0]) {
-                            // Просто номер/текст из столбца A
-                            text = row[0].toString().trim();
-                        }
-                        
-                        if (text) {
-                            if (requests.some(r => r.text === text)) {
-                                duplicates++;
-                            } else {
-                                requests.push({
-                                    id: generateRequestId(),
-                                    text: text,
-                                    clubId: null
-                                });
-                                added++;
-                            }
-                        }
-                    });
-
-                    if (added > 0) {
-                        updateStats();
-                        renderRequestList();
-                        saveData();
-                        showNotification(`✅ Добавлено заявок: ${added}` + 
-                            (duplicates > 0 ? ` (пропущено дубликатов: ${duplicates})` : ''));
-                    } else if (duplicates > 0) {
-                        showNotification(`⚠️ Все заявки уже существуют (найдено дубликатов: ${duplicates})`, 'warning');
+                    // Проверяем, это файл для редактирования связей или обычный импорт
+                    if (rows.length > 0 && rows[0].hasOwnProperty('ID') && rows[0].hasOwnProperty('Клуб')) {
+                        await handleEditedRequestsImport(rows);
                     } else {
-                        showNotification('❌ Не найдено данных для добавления. Проверьте столбцы A и K.', 'error');
+                        await handleRegularImport(rows);
                     }
                     
                 } catch (error) {
@@ -1402,31 +1658,559 @@
             reader.readAsArrayBuffer(file);
         }
 
+        // Обработка импорта отредактированных заявок
+        async function handleEditedRequestsImport(rows) {
+            // Убеждаемся, что глобальные массивы инициализированы
+            if (!requests) requests = [];
+            if (!mapPoints) mapPoints = [];
+            
+            let updatedRequests = 0;
+            let createdClubs = 0;
+            let linkedConnections = 0;
+            let errors = 0;
+
+            const validRows = rows.filter(row => 
+                row.ID && 
+                row.ID !== 'ИНСТРУКЦИЯ:' && 
+                row.ID !== 'ПРИМЕР:' && 
+                row.ID !== '───────' &&
+                row.ID !== '' &&
+                row.Заявка
+            );
+
+            for (const row of validRows) {
+                try {
+                    const requestId = parseInt(row.ID);
+                    const request = requests.find(r => r.id === requestId);
+                    
+                    if (request) {
+                        let needsUpdate = false;
+                        let clubId = request.clubId;
+                        
+                        // Проверяем, изменился ли текст заявки
+                        if (row.Заявка && row.Заявка !== request.text) {
+                            request.text = row.Заявка;
+                            needsUpdate = true;
+                            updatedRequests++;
+                        }
+
+                        // Обрабатываем связывание с клубом
+                        if (row.Клуб && row.Клуб.trim() !== '') {
+                            const clubName = row.Клуб.trim();
+                            
+                            // Убеждаемся, что mapPoints инициализирован
+                            if (!mapPoints) mapPoints = [];
+                            
+                            let club = mapPoints.find(p => p.name.toLowerCase() === clubName.toLowerCase());
+                            
+                            if (!club) {
+                                // Создаем новый клуб с автоматически определенными данными
+                                const clubData = getClubData(clubName);
+                                
+                                const clubResult = await APIWithLoading.addClub(clubName, clubData.address, clubData.lat, clubData.lng);
+                                if (clubResult.success) {
+                                    club = clubResult.club;
+                                    mapPoints.push(club);
+                                    createdClubs++;
+                                }
+                            }
+                            
+                            // Связываем заявку с клубом
+                            if (club && request.clubId !== club.id) {
+                                clubId = club.id;
+                                needsUpdate = true;
+                                linkedConnections++;
+                            }
+                        } else {
+                            // Убираем связь с клубом если поле пустое
+                            if (request.clubId) {
+                                clubId = null;
+                                needsUpdate = true;
+                                linkedConnections++;
+                            }
+                        }
+                        
+                        // Обновляем заявку на сервере если есть изменения
+                        if (needsUpdate) {
+                            const result = await APIWithLoading.updateRequest(requestId, request.text, clubId);
+                            if (result.success) {
+                                request.clubId = clubId;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Ошибка обработки строки:', error);
+                    errors++;
+                }
+            }
+
+            // Обновляем маркеры на карте для новых клубов
+            if (mapPoints && mapPoints.length > 0) {
+                mapPoints.forEach(point => {
+                    if (!mapMarkers.find(m => m.pointId === point.id)) {
+                        if (map) {
+                            addMarkerToMap(point);
+                        }
+                    }
+                });
+            }
+
+            updateStats();
+            updateMapStats();
+            renderRequestList();
+            renderPointsList();
+
+            if (updatedRequests + createdClubs + linkedConnections > 0) {
+                showNotification(`
+                    ✅ <strong>Импорт завершен!</strong><br>
+                    📝 Обновлено заявок: ${updatedRequests}<br>
+                    🏢 Создано клубов: ${createdClubs}<br>
+                    🔗 Связей создано: ${linkedConnections}
+                    ${errors > 0 ? `<br>⚠️ Ошибок: ${errors}` : ''}
+                `, 'success');
+            } else {
+                showNotification('Изменения не найдены. Проверьте формат файла.', 'warning');
+            }
+        }
+
+        // Индикатор загрузки
+        let loadingIndicator = null;
+        
+        function showLoading(message = 'Загрузка...') {
+            hideLoading();
+            loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'loading-indicator';
+            loadingIndicator.innerHTML = `
+                <div class="loading-spinner"></div>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(loadingIndicator);
+        }
+        
+        function hideLoading() {
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+                loadingIndicator = null;
+            }
+        }
+
+        // Обертка для API с индикатором загрузки
+        const APIWithLoading = {
+            async addRequest(text, clubId = null) {
+                showLoading('Добавление заявки...');
+                try {
+                    const result = await API.addRequest(text, clubId);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            },
+            
+            async updateRequest(id, text, clubId = null) {
+                showLoading('Обновление заявки...');
+                try {
+                    const result = await API.updateRequest(id, text, clubId);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            },
+            
+            async deleteRequest(id) {
+                showLoading('Удаление заявки...');
+                try {
+                    const result = await API.deleteRequest(id);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            },
+            
+            async completeRequest(id) {
+                showLoading('Выполнение заявки...');
+                try {
+                    const result = await API.completeRequest(id);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            },
+            
+            async addClub(name, address, lat, lng) {
+                showLoading('Добавление клуба...');
+                try {
+                    const result = await API.addClub(name, address, lat, lng);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            },
+            
+            async deleteClub(id) {
+                showLoading('Удаление клуба...');
+                try {
+                    const result = await API.deleteClub(id);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            },
+            
+            async importData(requests, mapPoints) {
+                showLoading('Импорт данных...');
+                try {
+                    const result = await API.importData(requests, mapPoints);
+                    return result;
+                } finally {
+                    hideLoading();
+                }
+            }
+        };
+        function findColumnByHeaders(row, possibleHeaders) {
+            for (const header of possibleHeaders) {
+                for (const [key, value] of Object.entries(row)) {
+                    if (key.toLowerCase().includes(header.toLowerCase()) && value) {
+                        return value;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Обработка обычного импорта
+        async function handleRegularImport(rows) {
+            // Убеждаемся, что глобальные массивы инициализированы
+            if (!requests) requests = [];
+            if (!mapPoints) mapPoints = [];
+            
+            let added = 0;
+            let duplicates = 0;
+            
+            const newRequests = [];
+            const newClubs = [];
+            
+            for (const row of rows) {
+                if (!row || Object.keys(row).length === 0) continue;
+                
+                let text = '';
+                
+                // Определяем столбцы по заголовкам
+                const theme = findColumnByHeaders(row, ['Тема', 'Проблема', 'Описание', 'Заявка', 'Задача']);
+                const contact = findColumnByHeaders(row, ['Контактное лицо', 'Контакт', 'Клиент', 'Заказчик']);
+                const number = findColumnByHeaders(row, ['Номер', 'ID', '№', 'Заявка']);
+                const club = findColumnByHeaders(row, ['Клуб', 'Организация', 'Компания', 'Место']);
+                
+                // Формируем текст заявки
+                if (contact) {
+                    let contactText = contact.toString().trim();
+                    // Если есть слэш, берем часть после последнего слэша
+                    if (contactText.includes('/')) {
+                        contactText = contactText.split('/').pop().trim();
+                    }
+                    
+                    const themeText = theme ? theme.toString().trim() : '';
+                    const numberText = number ? number.toString().trim() : '';
+                    
+                    if (themeText && numberText) {
+                        text = `${numberText}: ${themeText} — ${contactText}`;
+                    } else if (themeText) {
+                        text = `${themeText} — ${contactText}`;
+                    } else if (numberText) {
+                        text = `${numberText} — ${contactText}`;
+                    } else {
+                        text = contactText;
+                    }
+                } else if (theme) {
+                    const themeText = theme.toString().trim();
+                    const numberText = number ? number.toString().trim() : '';
+                    
+                    if (numberText) {
+                        text = `${numberText}: ${themeText}`;
+                    } else {
+                        text = themeText;
+                    }
+                } else if (number) {
+                    text = number.toString().trim();
+                }
+                
+                if (text) {
+                    // Убеждаемся, что requests инициализирован
+                    if (!requests) requests = [];
+                    
+                    if (requests.some(r => r.text === text)) {
+                        duplicates++;
+                    } else {
+                        let clubId = null;
+                        
+                        // Если есть информация о клубе, пытаемся связать
+                        if (club) {
+                            const clubName = club.toString().trim();
+                            if (clubName) {
+                                // Убеждаемся, что mapPoints инициализирован
+                                if (!mapPoints) mapPoints = [];
+                                
+                                let existingClub = mapPoints.find(p => p.name.toLowerCase() === clubName.toLowerCase());
+                                
+                                if (!existingClub) {
+                                    const clubData = getClubData(clubName);
+                                    existingClub = {
+                                        id: generateClubId(),
+                                        name: clubName,
+                                        address: clubData.address,
+                                        lat: clubData.lat,
+                                        lng: clubData.lng
+                                    };
+                                    newClubs.push(existingClub);
+                                }
+                                
+                                clubId = existingClub.id;
+                            }
+                        }
+                        
+                        newRequests.push({
+                            text: text,
+                            clubId: clubId
+                        });
+                        added++;
+                    }
+                }
+            }
+
+            // Импортируем данные через API
+            if (newRequests.length > 0 || newClubs.length > 0) {
+                const result = await APIWithLoading.importData(newRequests, newClubs);
+                if (result.success) {
+                    // После импорта запрашиваем свежие данные
+                    await loadData();
+                    // Скрываем индикатор загрузки
+                    hideLoading();
+                    // Обновляем маркеры на карте для новых клубов
+                    (mapPoints || []).forEach(point => {
+                        if (!mapMarkers.find(m => m.pointId === point.id)) {
+                            if (map) addMarkerToMap(point);
+                        }
+                    });
+                    // Обновляем UI
+                    updateStats();
+                    updateMapStats();
+                    renderRequestList();
+                    renderPointsList();
+                    showNotification(`
+                        ✅ <strong>Импорт завершен успешно!</strong><br>
+                        📊 Добавлено заявок: ${added}<br>
+                        🔍 Система автоматически определила столбцы
+                        ${duplicates > 0 ? `<br>⚠️ Пропущено дубликатов: ${duplicates}` : ''}
+                    `, 'success');
+                } else {
+                    showNotification('Ошибка при импорте данных', 'error');
+                }
+            } else if (duplicates > 0) {
+                showNotification(`⚠️ Все заявки уже существуют (найдено дубликатов: ${duplicates})`, 'warning');
+            } else {
+                showNotification(`
+                    ❌ <strong>Не найдено данных для добавления</strong><br>
+                    🔍 Проверьте заголовки столбцов:<br>
+                    • Тема/Проблема/Описание/Заявка<br>
+                    • Контактное лицо/Контакт/Клиент<br>
+                    • Номер/ID/№<br>
+                    • Клуб/Организация/Компания
+                `, 'error');
+            }
+        }
+
+        // API функции для работы с сервером
+        const API = {
+            // Получить все данные
+            async getData() {
+                try {
+                    const response = await fetch('/api/data');
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    showNotification('Ошибка загрузки данных с сервера', 'error');
+                    return null;
+                }
+            },
+
+            // Сохранить все данные
+            async saveData(data) {
+                try {
+                    const response = await fetch('/api/data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error saving data:', error);
+                    showNotification('Ошибка сохранения данных на сервер', 'error');
+                    return null;
+                }
+            },
+
+            // Добавить заявку
+            async addRequest(text, clubId = null) {
+                try {
+                    const response = await fetch('/api/requests', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, clubId })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, request: result };
+                } catch (error) {
+                    console.error('Error adding request:', error);
+                    showNotification('Ошибка добавления заявки', 'error');
+                    return { success: false, error: error.message };
+                }
+            },
+
+            // Обновить заявку
+            async updateRequest(id, text, clubId = null) {
+                try {
+                    const response = await fetch(`/api/requests/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, clubId })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, request: result };
+                } catch (error) {
+                    console.error('Error updating request:', error);
+                    showNotification('Ошибка обновления заявки', 'error');
+                    return { success: false, error: error.message };
+                }
+            },
+
+            // Удалить заявку
+            async deleteRequest(id) {
+                try {
+                    const response = await fetch(`/api/requests/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, result };
+                } catch (error) {
+                    console.error('Error deleting request:', error);
+                    showNotification('Ошибка удаления заявки', 'error');
+                    return { success: false, error: error.message };
+                }
+            },
+
+            // Отметить заявку как выполненную
+            async completeRequest(id) {
+                try {
+                    const response = await fetch(`/api/requests/${id}/complete`, {
+                        method: 'POST'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, result };
+                } catch (error) {
+                    console.error('Error completing request:', error);
+                    showNotification('Ошибка выполнения заявки', 'error');
+                    return { success: false, error: error.message };
+                }
+            },
+
+            // Добавить клуб
+            async addClub(name, address, lat, lng) {
+                try {
+                    const response = await fetch('/api/clubs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, address, lat, lng })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, club: result };
+                } catch (error) {
+                    console.error('Error adding club:', error);
+                    showNotification('Ошибка добавления клуба', 'error');
+                    return { success: false, error: error.message };
+                }
+            },
+
+            // Удалить клуб
+            async deleteClub(id) {
+                try {
+                    const response = await fetch(`/api/clubs/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, result };
+                } catch (error) {
+                    console.error('Error deleting club:', error);
+                    showNotification('Ошибка удаления клуба', 'error');
+                    return { success: false, error: error.message };
+                }
+            },
+
+            // Массовый импорт
+            async importData(requests, mapPoints) {
+                try {
+                    const response = await fetch('/api/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ requests, mapPoints })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    return { success: true, ...result };
+                } catch (error) {
+                    console.error('Error importing data:', error);
+                    showNotification('Ошибка импорта данных', 'error');
+                    return { success: false, error: error.message };
+                }
+            }
+        };
+
         // Сохранение и загрузка данных
-        function saveData() {
+        async function saveData() {
             const data = {
                 requests: requests,
-                completedCount: completedCount,
                 mapPoints: mapPoints,
+                completedCount: completedCount,
                 nextRequestId: nextRequestId,
                 nextClubId: nextClubId
             };
-            localStorage.setItem('requestsData', JSON.stringify(data));
+            
+            const result = await API.saveData(data);
+            if (result) {
+                console.log('Data saved to server successfully');
+            }
         }
 
-        function loadData() {
+        async function loadData() {
+            showLoading('Загрузка данных с сервера...');
             try {
-                const data = JSON.parse(localStorage.getItem('requestsData') || '{}');
-                if (data.requests) requests = data.requests;
-                if (data.completedCount) completedCount = data.completedCount;
-                if (data.mapPoints) mapPoints = data.mapPoints;
-                if (data.nextRequestId) nextRequestId = data.nextRequestId;
-                if (data.nextClubId) nextClubId = data.nextClubId;
-                
-                // Обновляем счетчики на случай, если данные были загружены без сохраненных счетчиков
-                updateIdCounters();
+                const data = await API.getData();
+                if (data) {
+                    requests = data.requests || [];
+                    mapPoints = data.mapPoints || [];
+                    completedCount = data.completedCount || 0;
+                    nextRequestId = data.nextRequestId || 1;
+                    nextClubId = data.nextClubId || 1;
+                    
+                    // Обновляем счетчики на случай, если данные были загружены без сохраненных счетчиков
+                    updateIdCounters();
+                    
+                    console.log('Data loaded from server successfully');
+                } else {
+                    console.log('Failed to load data from server, using defaults');
+                    showNotification('Не удалось загрузить данные с сервера, используются данные по умолчанию', 'warning');
+                }
             } catch (error) {
-                console.error('Ошибка загрузки данных:', error);
+                console.error('Error loading data from server:', error);
+                showNotification('Ошибка загрузки данных с сервера', 'error');
+            } finally {
+                hideLoading();
             }
         }
 
@@ -1475,22 +2259,16 @@
             });
         }
 
-        function addMapPoint(point) {
-            const id = generateClubId();
-            const newPoint = {
-                id: id,
-                name: point.name,
-                address: point.address || '',
-                lat: parseFloat(point.lat),
-                lng: parseFloat(point.lng)
-            };
-            
-            mapPoints.push(newPoint);
-            addMarkerToMap(newPoint);
-            updateMapStats();
-            renderPointsList();
-            saveData();
-            showNotification(`Точка "${point.name}" добавлена на карту!`);
+        async function addMapPoint(point) {
+            const result = await APIWithLoading.addClub(point.name, point.address || '', parseFloat(point.lat), parseFloat(point.lng));
+            if (result.success) {
+                const newPoint = result.club;
+                mapPoints.push(newPoint);
+                addMarkerToMap(newPoint);
+                updateMapStats();
+                renderPointsList();
+                showNotification(`Точка "${point.name}" добавлена на карту!`, 'success');
+            }
         }
 
         function addMarkerToMap(point) {
@@ -1532,38 +2310,47 @@
             }
         }
 
-        function removeMapPoint(pointId) {
+        async function removeMapPoint(pointId) {
             if (confirm('Удалить эту точку с карты?')) {
-                mapPoints = mapPoints.filter(p => p.id !== pointId);
-                
-                // Удаляем маркер с карты
-                const markerIndex = mapMarkers.findIndex(m => m.pointId === pointId);
-                if (markerIndex !== -1) {
-                    map.removeLayer(mapMarkers[markerIndex]);
-                    mapMarkers.splice(markerIndex, 1);
+                const result = await APIWithLoading.deleteClub(pointId);
+                if (result.success) {
+                    mapPoints = mapPoints.filter(p => p.id !== pointId);
+                    
+                    // Удаляем маркер с карты
+                    const markerIndex = mapMarkers.findIndex(m => m.pointId === pointId);
+                    if (markerIndex !== -1) {
+                        map.removeLayer(mapMarkers[markerIndex]);
+                        mapMarkers.splice(markerIndex, 1);
+                    }
+                    
+                    if (selectedPointId === pointId) {
+                        selectedPointId = null;
+                    }
+                    
+                    updateMapStats();
+                    renderPointsList();
+                    showNotification('Точка удалена с карты!', 'success');
                 }
-                
-                if (selectedPointId === pointId) {
-                    selectedPointId = null;
-                }
-                
-                updateMapStats();
-                renderPointsList();
-                saveData();
-                showNotification('Точка удалена с карты!', 'error');
             }
         }
 
-        function clearAllMapPoints() {
+        async function clearAllMapPoints() {
             if (confirm('Удалить все точки с карты? Это действие необратимо.')) {
-                mapPoints = [];
-                mapMarkers.forEach(marker => map.removeLayer(marker));
-                mapMarkers = [];
-                selectedPointId = null;
-                updateMapStats();
-                renderPointsList();
-                saveData();
-                showNotification('Все точки удалены с карты!', 'error');
+                // Удаляем все точки через API
+                const deletePromises = mapPoints.map(point => APIWithLoading.deleteClub(point.id));
+                const results = await Promise.all(deletePromises);
+                
+                if (results.every(r => r.success)) {
+                    mapPoints = [];
+                    mapMarkers.forEach(marker => map.removeLayer(marker));
+                    mapMarkers = [];
+                    selectedPointId = null;
+                    updateMapStats();
+                    renderPointsList();
+                    showNotification('Все точки удалены с карты!', 'success');
+                } else {
+                    showNotification('Не удалось удалить все точки', 'error');
+                }
             }
         }
 
@@ -1658,58 +2445,68 @@
                         // Обработка CSV
                         const csv = e.target.result;
                         const lines = csv.split('\n');
-                        data = lines.slice(1).map(line => {
-                            const cols = line.split(',');
-                            return [cols[0], cols[1], cols[2]]; // Клуб, Адрес, Координаты
+                        const headers = lines[0].split(',').map(h => h.trim());
+                        data = lines.slice(1).filter(line => line.trim()).map(line => {
+                            const values = line.split(',').map(v => v.trim());
+                            const obj = {};
+                            headers.forEach((header, index) => {
+                                obj[header] = values[index] || '';
+                            });
+                            return obj;
                         });
                     } else {
                         // Обработка Excel
                         const arrayBuffer = e.target.result;
                         const workbook = XLSX.read(arrayBuffer, {type: 'array'});
                         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        data = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                        data = XLSX.utils.sheet_to_json(sheet);
                     }
 
                     let added = 0;
                     let errors = 0;
 
                     data.forEach((row, index) => {
-                        if (index === 0 || !row || row.length < 3) return; // Пропускаем заголовок и неполные строки
+                        if (index === 0 || !row || Object.keys(row).length === 0) return; // Пропускаем заголовок и пустые строки
                         
-                        const name = row[0]?.toString().trim(); // Клуб
-                        const address = row[1]?.toString().trim(); // Адрес
-                        const coords = row[2]?.toString().trim(); // Координаты
+                        // Используем умное определение столбцов
+                        const name = findColumnByHeaders(row, ['Название', 'Имя', 'Клуб', 'Name', 'Точка', 'Организация']);
+                        const address = findColumnByHeaders(row, ['Адрес', 'Address', 'Адрес клуба', 'Местоположение']);
+                        const coords = findColumnByHeaders(row, ['Координаты', 'Coordinates', 'Lat,Lng', 'Coord']);
                         
-                        if (!name || !coords) {
+                        if (!name || !name.trim()) {
                             errors++;
                             return;
                         }
-
-                        // Парсим координаты
-                        const coordsMatch = coords.match(/([0-9.]+)[\s,]+([0-9.]+)/);
-                        if (!coordsMatch) {
-                            errors++;
-                            return;
+                        
+                        const clubName = name.toString().trim();
+                        let lat, lng;
+                        
+                        // Пытаемся извлечь координаты
+                        if (coords && coords.trim()) {
+                            const coordsMatch = coords.toString().match(/([0-9.]+)[\s,]+([0-9.]+)/);
+                            if (coordsMatch) {
+                                lat = parseFloat(coordsMatch[1]);
+                                lng = parseFloat(coordsMatch[2]);
+                            }
                         }
-
-                        const lat = parseFloat(coordsMatch[1]);
-                        const lng = parseFloat(coordsMatch[2]);
-
-                        if (isNaN(lat) || isNaN(lng)) {
-                            errors++;
-                            return;
+                        
+                        // Если координаты не найдены, определяем автоматически
+                        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                            const clubData = getClubData(clubName);
+                            lat = clubData.lat;
+                            lng = clubData.lng;
                         }
 
                         // Проверяем, не существует ли уже точка с таким названием
-                        const existingPoint = mapPoints.find(p => p.name === name);
+                        const existingPoint = mapPoints.find(p => p.name.toLowerCase() === clubName.toLowerCase());
                         if (existingPoint) {
                             return;
                         }
 
                         const newPoint = {
                             id: generateClubId(),
-                            name: name,
-                            address: address || '',
+                            name: clubName,
+                            address: address ? address.toString().trim() : getClubData(clubName).address,
                             lat: lat,
                             lng: lng
                         };
@@ -1770,8 +2567,51 @@
             showNotification('Файл с точками экспортирован!');
         }
 
+        // Экспорт шаблона для клубов
+        function exportMapTemplate() {
+            const templateData = [
+                {
+                    'Название': 'ИНСТРУКЦИЯ: Заполните данные клубов',
+                    'Адрес': 'Адрес клуба (необязательно)',
+                    'Координаты': 'Формат: широта, долгота'
+                },
+                {
+                    'Название': 'Пример: Спортзал "Олимп"',
+                    'Адрес': 'ул. Ленина, 25, Москва',
+                    'Координаты': '55.7558, 37.6176'
+                },
+                {
+                    'Название': '─────────────────────',
+                    'Адрес': '─────────────────────',
+                    'Координаты': '─────────────────────'
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            
+            // Настраиваем ширину колонок
+            ws['!cols'] = [
+                {wch: 30}, // Название
+                {wch: 40}, // Адрес
+                {wch: 25}  // Координаты
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Шаблон клубов");
+            XLSX.writeFile(wb, `шаблон_клубов_${new Date().toLocaleDateString()}.xlsx`);
+            showNotification(`
+                📋 <strong>Шаблон для клубов экспортирован!</strong><br>
+                📝 Заполните названия, адреса и координаты клубов<br>
+                📥 Импортируйте файл обратно для добавления на карту
+            `, 'info');
+        }
+
         // Экспорт карты с заявками
         function exportMapWithRequests() {
+            // Убеждаемся, что массивы инициализированы
+            if (!mapPoints) mapPoints = [];
+            if (!requests) requests = [];
+            
             if (mapPoints.length === 0) {
                 showNotification('Нет точек для экспорта', 'error');
                 return;
@@ -1824,6 +2664,149 @@
 
         // Event Listeners
         elements.randomBtn.addEventListener('click', showRandomRequest);
+        elements.doneBtn.addEventListener('click', markAsDone);
+        elements.addForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const text = elements.addInput.value.trim();
+            if (text) {
+                addRequest(text);
+                elements.addInput.value = '';
+            }
+        });
+
+        // Модальное окно
+        elements.showListBtn.addEventListener('click', function() {
+            elements.modal.style.display = 'flex';
+            renderRequestList();
+        });
+
+        elements.closeModalBtn.addEventListener('click', function() {
+            elements.modal.style.display = 'none';
+            editingId = null;
+        });
+
+        elements.modal.addEventListener('click', function(e) {
+            if (e.target === elements.modal) {
+                elements.modal.style.display = 'none';
+                editingId = null;
+            }
+        });
+
+        // Поиск
+        elements.searchInput.addEventListener('input', renderRequestList);
+
+        // Файлы
+        elements.uploadXlsxBtn.addEventListener('click', function() {
+            elements.xlsxInput.click();
+        });
+
+        elements.xlsxInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleFileUpload(this.files[0]);
+                this.value = '';
+            }
+        });
+
+        // Кнопки управления
+        elements.deleteAllBtn.addEventListener('click', deleteAllRequests);
+        elements.resetCompletedBtn.addEventListener('click', resetCompletedRequests);
+        elements.exportBtn.addEventListener('click', exportToExcel);
+        elements.exportSimpleBtn.addEventListener('click', exportSimple);
+
+        // Drag & Drop
+        elements.dragDropArea.addEventListener('click', function() {
+            elements.xlsxInput.click();
+        });
+
+        elements.dragDropArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        elements.dragDropArea.addEventListener('dragleave', function() {
+            this.classList.remove('dragover');
+        });
+
+        elements.dragDropArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Связанные данные
+        elements.exportLinkedBtn.addEventListener('click', exportLinkedData);
+        elements.importLinkedBtn.addEventListener('click', function() {
+            elements.linkedFileInput.click();
+        });
+        elements.exportTemplateBtn.addEventListener('click', exportToExcel);
+
+        elements.linkedFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleLinkedDataImport(this.files[0]);
+                this.value = '';
+            }
+        });
+
+        // Карта
+        elements.showMapBtn.addEventListener('click', function() {
+            elements.mapModal.style.display = 'flex';
+            setTimeout(() => {
+                initializeMap();
+                updateMapStats();
+                renderPointsList();
+            }, 100);
+        });
+
+        elements.closeMapModalBtn.addEventListener('click', function() {
+            elements.mapModal.style.display = 'none';
+        });
+
+        elements.mapModal.addEventListener('click', function(e) {
+            if (e.target === elements.mapModal) {
+                elements.mapModal.style.display = 'none';
+            }
+        });
+
+        // Карта файлы
+        elements.mapFileUpload.addEventListener('click', function() {
+            elements.mapFileInput.click();
+        });
+
+        elements.mapFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleMapFileUpload(this.files[0]);
+                this.value = '';
+            }
+        });
+
+        // Карта поиск
+        elements.mapSearchInput.addEventListener('input', renderPointsList);
+
+        // Карта управление
+        elements.clearMapBtn.addEventListener('click', clearAllMapPoints);
+        elements.centerMapBtn.addEventListener('click', centerMap);
+        elements.exportMapBtn.addEventListener('click', exportMapPoints);
+        elements.exportMapTemplateBtn.addEventListener('click', exportMapTemplate);
+
+        // Карта связанные данные
+        elements.exportMapLinkedBtn.addEventListener('click', exportMapWithRequests);
+        elements.importMapLinkedBtn.addEventListener('click', function() {
+            elements.mapLinkedFileInput.click();
+        });
+
+        elements.mapLinkedFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleLinkedDataImport(this.files[0]);
+                this.value = '';
+            }
+        });
+
+        // Инициализация
+        loadData();
+        updateStats();
+        renderRequestList();
         elements.doneBtn.addEventListener('click', markAsDone);
 
         elements.addForm.addEventListener('submit', function(e) {
@@ -1878,11 +2861,13 @@
             setTimeout(() => {
                 initializeMap();
                 // Загружаем существующие точки на карту (если их ещё нет)
-                mapPoints.forEach(point => {
-                    if (!mapMarkers.find(m => m.pointId === point.id)) {
-                        addMarkerToMap(point);
-                    }
-                });
+                if (mapPoints && mapPoints.length > 0) {
+                    mapPoints.forEach(point => {
+                        if (!mapMarkers.find(m => m.pointId === point.id)) {
+                            addMarkerToMap(point);
+                        }
+                    });
+                }
                 updateMapStats();
                 renderPointsList();
                 // Обновляем размер карты и центрируем
@@ -2025,9 +3010,11 @@
         });
 
         // Инициализация при загрузке
-        loadData();
-        updateStats();
-        renderRequestList();
+        (async function initialize() {
+            await loadData();
+            updateStats();
+            renderRequestList();
+        })();
     </script>
 </body>
 </html>
