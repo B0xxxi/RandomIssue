@@ -688,14 +688,19 @@
 
         .club-selector select {
             background: var(--input-bg);
+            background-color: rgba(255, 255, 255, 0.1) !important;
             border: 1px solid var(--input-border);
             border-radius: 8px;
             padding: 6px 12px;
             font-size: 0.875rem;
             color: var(--text);
+            color: #f7fafc !important;
             width: 100%;
             outline: none;
             transition: all 0.3s ease;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
 
         .club-selector select:focus {
@@ -705,7 +710,24 @@
 
         .club-selector option {
             background: var(--card-bg);
+            background-color: #ffffff !important;
             color: var(--text);
+            color: #000000 !important;
+            padding: 6px 12px;
+        }
+
+        /* Дополнительные стили для кроссбраузерной совместимости */
+        .club-selector select::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .club-selector select::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .club-selector select::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
         }
 
         .linked-requests {
