@@ -708,20 +708,6 @@
             color: var(--text);
         }
 
-        .club-info {
-            font-size: 0.75rem;
-            color: var(--accent-light);
-            margin-top: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .club-info svg {
-            width: 12px;
-            height: 12px;
-        }
-
         .linked-requests {
             margin-top: 12px;
             padding-top: 12px;
@@ -1212,12 +1198,6 @@
                         <div class="request-text" ${editingId === req.id ? 'contenteditable="true"' : ''}>
                             ${req.text}
                         </div>
-                        ${linkedClub ? `<div class="club-info">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                            ${linkedClub.name}
-                        </div>` : ''}
                         <div class="club-selector">
                             <select onchange="linkRequestToClub(${req.id}, this.value)">
                                 <option value="">Выберите клуб...</option>
@@ -1895,7 +1875,6 @@
                 let text = '';
                 
                 // Определяем столбцы по заголовкам
-                const theme = findColumnByHeaders(row, ['Тема', 'Проблема', 'Описание', 'Заявка', 'Задача']);
                 const contact = findColumnByHeaders(row, ['Контактное лицо', 'Контакт', 'Клиент', 'Заказчик']);
                 const number = findColumnByHeaders(row, ['Номер', 'ID', '№', 'Заявка']);
                 const club = findColumnByHeaders(row, ['Клуб', 'Организация', 'Компания', 'Место']);
@@ -1908,27 +1887,16 @@
                         contactText = contactText.split('/').pop().trim();
                     }
                     
-                    const themeText = theme ? theme.toString().trim() : '';
                     const numberText = number ? number.toString().trim() : '';
                     
-                    if (themeText && numberText) {
-                        text = `${numberText}: ${themeText} — ${contactText}`;
-                    } else if (themeText) {
-                        text = `${themeText} — ${contactText}`;
-                    } else if (numberText) {
+                    if (numberText) {
                         text = `${numberText} — ${contactText}`;
                     } else {
                         text = contactText;
                     }
-                } else if (theme) {
-                    const themeText = theme.toString().trim();
-                    const numberText = number ? number.toString().trim() : '';
-                    
-                    if (numberText) {
-                        text = `${numberText}: ${themeText}`;
-                    } else {
-                        text = themeText;
-                    }
+                } else if (number) {
+                    const numberText = number.toString().trim();
+                    text = numberText;
                 } else if (number) {
                     text = number.toString().trim();
                 }
@@ -2010,7 +1978,6 @@
                 showNotification(`
                     ❌ <strong>Не найдено данных для добавления</strong><br>
                     🔍 Проверьте заголовки столбцов:<br>
-                    • Тема/Проблема/Описание/Заявка<br>
                     • Контактное лицо/Контакт/Клиент<br>
                     • Номер/ID/№<br>
                     • Клуб/Организация/Компания
