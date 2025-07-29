@@ -750,6 +750,21 @@
             margin-bottom: 6px;
             font-size: 0.875rem;
             color: var(--text);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .linked-request-item:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+        }
+
+        .linked-request-item:last-child {
+            margin-bottom: 0;
         }
 
         .export-import-controls {
@@ -1283,6 +1298,7 @@
                 nextRequestId = Math.max(nextRequestId, newRequest.id + 1);
                 updateStats();
                 renderRequestList();
+                updateAllMarkersPopups(); // Обновляем popup маркеров
                 showNotification('Заявка добавлена!', 'success');
             }
         }
@@ -1305,6 +1321,7 @@
                 
                 if (result.success) {
                     request.text = newText;
+                    updateAllMarkersPopups(); // Обновляем popup маркеров
                     showNotification('Заявка обновлена!', 'success');
                 } else {
                     // Откатываем изменения в UI
@@ -1330,6 +1347,7 @@
                     requests = requests.filter(r => r.id !== id);
                     updateStats();
                     renderRequestList();
+                    updateAllMarkersPopups(); // Обновляем popup маркеров
                     showNotification('Заявка удалена!', 'success');
                 }
             }
@@ -1353,6 +1371,7 @@
                     completedCount = 0;
                     updateStats();
                     renderRequestList();
+                    updateAllMarkersPopups(); // Обновляем popup маркеров
                     elements.requestField.textContent = 'Нажмите "Выбрать заявку" для начала работы';
                     showNotification('Все заявки удалены!', 'success');
                 } else {
@@ -1761,6 +1780,7 @@
             updateMapStats();
             renderRequestList();
             renderPointsList();
+            updateAllMarkersPopups(); // Обновляем popup маркеров
 
             if (updatedRequests + createdClubs + linkedConnections > 0) {
                 showNotification(`
@@ -1985,6 +2005,7 @@
                     updateMapStats();
                     renderRequestList();
                     renderPointsList();
+                    updateAllMarkersPopups(); // Обновляем popup маркеров
                     showNotification(`
                         ✅ <strong>Импорт завершен успешно!</strong><br>
                         📊 Добавлено заявок: ${added}<br>
@@ -2246,6 +2267,13 @@
                     });
                 }
             });
+
+            // Добавляем существующие точки на карту
+            if (mapPoints && mapPoints.length > 0) {
+                mapPoints.forEach(point => {
+                    addMarkerToMap(point);
+                });
+            }
         }
 
         async function addMapPoint(point) {
@@ -2264,27 +2292,86 @@
             // Проверяем, не существует ли уже маркер для этой точки
             const existingMarker = mapMarkers.find(m => m.pointId === point.id);
             if (existingMarker) {
+                // Обновляем popup для существующего маркера
+                updateMarkerPopup(existingMarker, point);
                 return existingMarker;
             }
 
             const marker = L.marker([point.lat, point.lng])
-                .addTo(map)
-                .bindPopup(`
-                    <div style="color: #1a202c;">
-                        <strong>${point.name}</strong><br>
-                        ${point.address ? `<small>${point.address}</small><br>` : ''}
-                        <small>Координаты: ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</small>
-                    </div>
-                `);
+                .addTo(map);
             
             marker.pointId = point.id;
             mapMarkers.push(marker);
             
+            // Обновляем popup с учетом связанных заявок
+            updateMarkerPopup(marker, point);
+            
             marker.on('click', function() {
                 selectPoint(point.id);
+                // Принудительно обновляем popup при клике
+                updateMarkerPopup(marker, point);
+                // Открываем popup если он закрыт
+                if (!marker.isPopupOpen()) {
+                    marker.openPopup();
+                }
             });
 
             return marker;
+        }
+
+        function updateMarkerPopup(marker, point) {
+            // Получаем связанные заявки
+            const linkedRequests = requests ? requests.filter(req => req.clubId === point.id) : [];
+            
+            let popupContent = `
+                <div style="color: #1a202c; min-width: 200px;">
+                    <strong>${point.name}</strong><br>
+                    ${point.address ? `<small>${point.address}</small><br>` : ''}
+                    <small>Координаты: ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</small>
+                    
+                    ${linkedRequests.length > 0 ? `
+                        <hr style="margin: 8px 0; border: 1px solid #e2e8f0;">
+                        <div style="font-weight: bold; color: #2d3748; margin-bottom: 6px;">
+                            📋 Связанные заявки (${linkedRequests.length}):
+                        </div>
+                        <div style="max-height: 150px; overflow-y: auto;">
+                            ${linkedRequests.map(req => `
+                                <div style="
+                                    background: #f7fafc; 
+                                    border: 1px solid #e2e8f0; 
+                                    border-radius: 4px; 
+                                    padding: 6px; 
+                                    margin-bottom: 4px; 
+                                    font-size: 12px;
+                                    line-height: 1.3;
+                                    cursor: pointer;
+                                " onclick="showRequestDetails(${req.id})">
+                                    ${req.text}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <hr style="margin: 8px 0; border: 1px solid #e2e8f0;">
+                        <div style="color: #718096; font-size: 12px; font-style: italic;">
+                            Нет связанных заявок
+                        </div>
+                    `}
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+        }
+
+        function updateAllMarkersPopups() {
+            // Обновляем popup для всех маркеров на карте
+            if (mapMarkers && mapMarkers.length > 0 && mapPoints) {
+                mapMarkers.forEach((marker, index) => {
+                    const point = mapPoints.find(p => p.id === marker.pointId);
+                    if (point) {
+                        updateMarkerPopup(marker, point);
+                    }
+                });
+            }
         }
 
         function selectPoint(pointId) {
@@ -2386,12 +2473,22 @@
                         
                         ${linkedRequests.length > 0 ? `
                             <div class="linked-requests">
-                                <h4>Связанные заявки (${linkedRequests.length}):</h4>
+                                <h4>📋 Связанные заявки (${linkedRequests.length}):</h4>
                                 ${linkedRequests.map(req => `
-                                    <div class="linked-request-item">${req.text}</div>
+                                    <div class="linked-request-item" 
+                                         onclick="event.stopPropagation(); showRequestDetails(${req.id})"
+                                         title="Кликните чтобы открыть список заявок и выделить эту заявку">
+                                        ${req.text}
+                                    </div>
                                 `).join('')}
                             </div>
-                        ` : ''}
+                        ` : `
+                            <div class="linked-requests">
+                                <h4 style="color: var(--text-muted); font-style: italic;">
+                                    📝 Нет связанных заявок
+                                </h4>
+                            </div>
+                        `}
                         
                         <div style="margin-top: 8px;">
                             <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); removeMapPoint(${point.id})">
@@ -2408,13 +2505,55 @@
             const request = requests.find(r => r.id === requestId);
             if (request) {
                 request.clubId = clubId ? parseInt(clubId) : null;
+                
                 saveData();
                 renderRequestList();
                 renderPointsList();
                 
+                // Обновляем popup маркеров на карте
+                updateAllMarkersPopups();
+                
                 const clubName = clubId ? mapPoints.find(p => p.id === parseInt(clubId))?.name : 'Нет';
                 showNotification(`Заявка связана с клубом: ${clubName}`);
             }
+        }
+
+        // Показать детали заявки - открывает модальное окно и выделяет заявку
+        function showRequestDetails(requestId) {
+            // Открываем модальное окно со списком заявок
+            elements.modal.style.display = 'flex';
+            
+            // Очищаем поиск, чтобы показать все заявки
+            elements.searchInput.value = '';
+            
+            // Перерендериваем список заявок
+            renderRequestList();
+            
+            // Находим и выделяем нужную заявку
+            setTimeout(() => {
+                const requestElement = document.querySelector(`[data-id="${requestId}"]`);
+                if (requestElement) {
+                    // Добавляем временное выделение
+                    requestElement.style.background = 'rgba(16, 185, 129, 0.3)';
+                    requestElement.style.border = '2px solid var(--accent)';
+                    requestElement.style.borderRadius = '8px';
+                    
+                    // Прокручиваем к элементу
+                    requestElement.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                    
+                    // Убираем выделение через 3 секунды
+                    setTimeout(() => {
+                        requestElement.style.background = '';
+                        requestElement.style.border = '';
+                        requestElement.style.borderRadius = '';
+                    }, 3000);
+                }
+            }, 100);
+            
+            showNotification('📋 Заявка выделена в списке!', 'info');
         }
 
         function handleMapFileUpload(file) {
@@ -2745,6 +2884,7 @@
                 initializeMap();
                 updateMapStats();
                 renderPointsList();
+                updateAllMarkersPopups(); // Обновляем popup маркеров при открытии карты
             }, 100);
         });
 
@@ -3003,6 +3143,7 @@
             await loadData();
             updateStats();
             renderRequestList();
+            updateAllMarkersPopups(); // Обновляем popup маркеров при инициализации
         })();
     </script>
 </body>

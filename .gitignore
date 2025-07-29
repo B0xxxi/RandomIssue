@@ -21,6 +21,7 @@ temp/
 requests.json
 *.db
 *.sqlite
+app-data.json
 
 # Логи
 logs/
