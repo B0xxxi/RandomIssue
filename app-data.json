@@ -3,7 +3,7 @@
     {
       "id": 1,
       "text": "1 — Тест",
-      "clubId": null,
+      "clubId": 1,
       "createdAt": "2025-07-16T13:33:12.382Z"
     }
   ],
@@ -15,10 +15,26 @@
       "lat": 55.7558,
       "lng": 37.6176,
       "createdAt": "2025-07-16T00:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "ЛЕВРОТОВО",
+      "address": "",
+      "lat": 55.75668262066774,
+      "lng": 37.70679473876954,
+      "createdAt": "2025-08-19T14:52:13.450Z"
+    },
+    {
+      "id": 3,
+      "name": "ПОРТВЕЙН 777",
+      "address": "",
+      "lat": 55.72343434444449,
+      "lng": 37.654953002929695,
+      "createdAt": "2025-08-19T14:52:29.331Z"
     }
   ],
   "completedCount": 0,
-  "nextRequestId": 2723,
-  "nextClubId": 2,
-  "lastUpdated": "2025-07-16T13:33:20.206Z"
+  "nextRequestId": 2,
+  "nextClubId": 4,
+  "lastUpdated": "2025-08-19T14:52:29.331Z"
 }

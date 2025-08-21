@@ -487,22 +487,26 @@
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            padding: 20px;
+            padding: 0;
         }
 
         .map-modal-content {
+            /* Сделать модальное окно с картой действительно полноэкранным */
             background: var(--card-bg);
             backdrop-filter: blur(20px);
             border: 1px solid var(--card-border);
-            border-radius: 20px;
-            width: 95%;
-            height: 90%;
-            max-width: 1200px;
-            max-height: 800px;
-            position: relative;
+            border-radius: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            max-height: none;
+            position: fixed;
+            top: 0;
+            left: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            z-index: 10001;
         }
 
         .map-header {
@@ -568,7 +572,9 @@
 
         #map {
             width: 100%;
-            height: 100%;
+            /* Задаём высоту карты так, чтобы она занимала весь экран внутри модального окна
+               (вычитаем высоту заголовка карты) */
+            height: calc(100vh - 64px);
             min-height: 400px;
             border-radius: 0 0 20px 0;
             z-index: 1;
@@ -1954,6 +1960,17 @@
                         
                         // Если есть информация о клубе, пытаемся связать
                         if (club) {
+                    // Если карта уже инициализирована, обновляем маркеры и иконки
+                    if (map) {
+                        // Удаляем старые маркеры
+                        mapMarkers.forEach(m => map.removeLayer(m));
+                        mapMarkers = [];
+                        mapPoints.forEach(point => {
+                            const m = addMarkerToMap(point);
+                            try { updateMarkerIcon(m); } catch (e) {}
+                        });
+                        updateAllMarkersPopups();
+                    }
                             const clubName = club.toString().trim();
                             if (clubName) {
                                 // Убеждаемся, что mapPoints инициализирован
@@ -2212,6 +2229,17 @@
                     updateIdCounters();
                     
                     console.log('Data loaded from server successfully');
+                    // Если карта уже инициализирована, обновляем маркеры и иконки
+                    if (map) {
+                        // Удаляем старые маркеры
+                        mapMarkers.forEach(m => map.removeLayer(m));
+                        mapMarkers = [];
+                        mapPoints.forEach(point => {
+                            const m = addMarkerToMap(point);
+                            try { updateMarkerIcon(m); } catch (e) { /* noop */ }
+                        });
+                        updateAllMarkersPopups();
+                    }
                 } else {
                     console.log('Failed to load data from server, using defaults');
                     showNotification('Не удалось загрузить данные с сервера, используются данные по умолчанию', 'warning');
@@ -2221,6 +2249,44 @@
                 showNotification('Ошибка загрузки данных с сервера', 'error');
             } finally {
                 hideLoading();
+            }
+        }
+
+        // Создаём и кэшируем иконки для маркеров (чтобы не создавать их каждый раз)
+        const ICONS = {
+            red: new L.Icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            }),
+            blue: new L.Icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            }),
+            default: new L.Icon.Default()
+        };
+
+        function getMarkerIcon(point) {
+            const linkedRequests = requests ? requests.filter(req => req.clubId === point.id) : [];
+            if (linkedRequests.length > 0) return ICONS.red;
+            // Если нет связанных заявок, используем синий кастомный маркер для лучшей видимости
+            return ICONS.blue || ICONS.default;
+        }
+
+        function updateMarkerIcon(marker) {
+            const point = mapPoints.find(p => p.id === marker.pointId);
+            if (!point) return;
+            const desiredIcon = getMarkerIcon(point);
+            // Сравниваем URL, чтобы не назначать иконку без надобности
+            if (marker.options && marker.options.icon && marker.options.icon.options && marker.options.icon.options.iconUrl !== desiredIcon.options.iconUrl) {
+                marker.setIcon(desiredIcon);
             }
         }
 
@@ -2238,7 +2304,8 @@
             // Создаем карту с принудительным размером
             map = L.map('map', {
                 preferCanvas: true,
-                zoomControl: true
+                zoomControl: true,
+                doubleClickZoom: true // Включаем приближение по двойному щелчку
             }).setView([55.7558, 37.6176], 10);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -2251,20 +2318,28 @@
                 map.invalidateSize(true);
             }, 100);
 
-            // Обработчик клика по карте
-            map.on('click', function(e) {
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-                
-                const name = prompt('Введите название точки:');
-                if (name) {
-                    const address = prompt('Введите адрес (необязательно):') || '';
-                    addMapPoint({
-                        name: name,
-                        address: address,
-                        lat: lat,
-                        lng: lng
-                    });
+            // ПКМ по пустому месту: добавить новую точку
+            map.on('contextmenu', function(e) {
+                try {
+                    // Игнорируем ПКМ по маркеру
+                    const evtTarget = e.originalEvent && e.originalEvent.target;
+                    if (evtTarget && evtTarget.classList && evtTarget.classList.contains('leaflet-marker-icon')) {
+                        return;
+                    }
+
+                    const lat = e.latlng.lat;
+                    const lng = e.latlng.lng;
+                    const defaultName = prompt('Название новой точки (отмена — отмена):', 'Новая точка');
+                    if (!defaultName) {
+                        showNotification('Добавление точки отменено', 'info');
+                        return;
+                    }
+
+                    const point = { name: defaultName.trim() || 'Новая точка', address: '', lat: lat, lng: lng };
+                    addMapPoint(point);
+                } catch (err) {
+                    console.error('Ошибка при создании точки ПКМ:', err);
+                    showNotification('Не удалось добавить точку', 'error');
                 }
             });
 
@@ -2274,6 +2349,28 @@
                     addMarkerToMap(point);
                 });
             }
+        }
+
+        // Точный центрировщик: ставит переданную позицию точно в центр контейнера карты
+        function centerMapOnLatLng(latlng, callback) {
+            if (!map) { if (typeof callback === 'function') callback(); return; }
+            try { map.invalidateSize(true); } catch (e) {}
+            const targetContainer = map.getSize().divideBy(2); // центр контейнера
+            const currentContainer = map.latLngToContainerPoint(latlng);
+            // поправка: panBy принимает смещение карты, чтобы точка оказалась в центре,
+            // нужно передать (current - target)
+            const delta = currentContainer.subtract(targetContainer);
+            if (Math.abs(delta.x) < 0.5 && Math.abs(delta.y) < 0.5) {
+                if (typeof callback === 'function') callback();
+                return;
+            }
+
+            map.panBy(delta, { animate: true });
+            const onMoveEnd = function() {
+                map.off('moveend', onMoveEnd);
+                if (typeof callback === 'function') callback();
+            };
+            map.on('moveend', onMoveEnd);
         }
 
         async function addMapPoint(point) {
@@ -2297,7 +2394,7 @@
                 return existingMarker;
             }
 
-            const marker = L.marker([point.lat, point.lng])
+            const marker = L.marker([point.lat, point.lng], { icon: getMarkerIcon(point) })
                 .addTo(map);
             
             marker.pointId = point.id;
@@ -2305,15 +2402,36 @@
             
             // Обновляем popup с учетом связанных заявок
             updateMarkerPopup(marker, point);
-            
+
+            // Используем глобальный centerMapOnLatLng для центрирования — определён выше
+
+            // Одиночный клик — точно центрируем и открываем попап
             marker.on('click', function() {
-                selectPoint(point.id);
-                // Принудительно обновляем popup при клике
-                updateMarkerPopup(marker, point);
-                // Открываем popup если он закрыт
-                if (!marker.isPopupOpen()) {
-                    marker.openPopup();
-                }
+                selectedPointId = point.id;
+                renderPointsList();
+                updateMapStats();
+
+                const latlng = L.latLng(point.lat, point.lng);
+                // Центрируем через глобальную утилиту, затем обновляем и открываем popup
+                centerMapOnLatLng(latlng, function() {
+                    updateMarkerPopup(marker, point);
+                    if (!marker.isPopupOpen()) marker.openPopup();
+                });
+            });
+
+            // Двойной клик — центрируем, затем изменяем zoom (чтобы не сдвигать позицию при zoom)
+            marker.on('dblclick', function() {
+                selectedPointId = point.id;
+                renderPointsList();
+                updateMapStats();
+
+                const latlng = L.latLng(point.lat, point.lng);
+                const targetZoom = 15;
+                centerMapOnLatLng(latlng, function() {
+                    try { map.setZoom(targetZoom, { animate: true }); } catch (e) {}
+                    updateMarkerPopup(marker, point);
+                    if (!marker.isPopupOpen()) marker.openPopup();
+                });
             });
 
             return marker;
@@ -2345,8 +2463,8 @@
                                     font-size: 12px;
                                     line-height: 1.3;
                                     cursor: pointer;
-                                " onclick="showRequestDetails(${req.id})">
-                                    ${req.text}
+                                " onclick="(function(){ copyRequestIdToClipboard(${req.id}); showRequestDetails(${req.id}); })()">
+                                    ${req.text} <small style=\"color:#4a5568; margin-left:6px; font-weight:600;\">#${req.id}</small>
                                 </div>
                             `).join('')}
                         </div>
@@ -2362,6 +2480,24 @@
             marker.bindPopup(popupContent);
         }
 
+        // Копирование ID заявки в буфер обмена
+        function copyRequestIdToClipboard(id) {
+            if (!navigator.clipboard) {
+                // fallback
+                const ta = document.createElement('textarea');
+                ta.value = id.toString();
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); showNotification(`ID ${id} скопирован в буфер`); } catch (e) { showNotification('Не удалось скопировать в буфер', 'error'); }
+                ta.remove();
+                return;
+            }
+
+            navigator.clipboard.writeText(id.toString())
+                .then(() => showNotification(`ID ${id} скопирован в буфер`, 'success'))
+                .catch(() => showNotification('Не удалось скопировать в буфер', 'error'));
+        }
+
         function updateAllMarkersPopups() {
             // Обновляем popup для всех маркеров на карте
             if (mapMarkers && mapMarkers.length > 0 && mapPoints) {
@@ -2369,6 +2505,8 @@
                     const point = mapPoints.find(p => p.id === marker.pointId);
                     if (point) {
                         updateMarkerPopup(marker, point);
+                        // Также обновляем иконку маркера в соответствии с наличием связанных заявок
+                        try { updateMarkerIcon(marker); } catch (e) { /* noop */ }
                     }
                 });
             }
@@ -2382,7 +2520,23 @@
             // Центрируем карту на выбранной точке
             const point = mapPoints.find(p => p.id === pointId);
             if (point) {
-                map.setView([point.lat, point.lng], 15);
+                if (map) {
+                    try { map.invalidateSize(true); } catch(e) {}
+                    const curZoom = (typeof map.getZoom === 'function') ? map.getZoom() : 13;
+
+                    // Используем центрирование с плавным pan, чтобы маркер оказывался в центре
+                    const latlng = L.latLng(point.lat, point.lng);
+                    centerMapOnLatLng(latlng, function() {
+                        try { map.setZoom(curZoom, { animate: true }); } catch (e) {}
+
+                        // Открываем popup соответствующего маркера, если он есть
+                        const marker = mapMarkers.find(m => m.pointId === pointId);
+                        if (marker) {
+                            updateMarkerPopup(marker, point);
+                            setTimeout(() => { if (!marker.isPopupOpen()) marker.openPopup(); }, 220);
+                        }
+                    });
+                }
             }
         }
 
@@ -2504,15 +2658,24 @@
         function linkRequestToClub(requestId, clubId) {
             const request = requests.find(r => r.id === requestId);
             if (request) {
+                const oldClubId = request.clubId;
                 request.clubId = clubId ? parseInt(clubId) : null;
-                
+
                 saveData();
                 renderRequestList();
                 renderPointsList();
-                
-                // Обновляем popup маркеров на карте
+
+                // Обновляем popup маркеров и иконки маркеров на карте
                 updateAllMarkersPopups();
-                
+                if (mapMarkers && mapMarkers.length > 0) {
+                    // Обновляем маркеры только для старого и нового клубов чтобы не лишний раз менять все
+                    mapMarkers.forEach(m => {
+                        if (m.pointId === oldClubId || m.pointId === request.clubId) {
+                            try { updateMarkerIcon(m); } catch (e) { /* noop */ }
+                        }
+                    });
+                }
+
                 const clubName = clubId ? mapPoints.find(p => p.id === parseInt(clubId))?.name : 'Нет';
                 showNotification(`Заявка связана с клубом: ${clubName}`);
             }
