@@ -31,10 +31,18 @@
       "lat": 55.72343434444449,
       "lng": 37.654953002929695,
       "createdAt": "2025-08-19T14:52:29.331Z"
+    },
+    {
+      "id": 4,
+      "name": "ABOBA",
+      "address": "",
+      "lat": 55.75310966558022,
+      "lng": 37.50629425048829,
+      "createdAt": "2025-08-22T13:40:16.136Z"
     }
   ],
   "completedCount": 0,
   "nextRequestId": 2,
-  "nextClubId": 4,
-  "lastUpdated": "2025-08-19T14:52:29.331Z"
+  "nextClubId": 5,
+  "lastUpdated": "2025-08-22T13:40:16.136Z"
 }

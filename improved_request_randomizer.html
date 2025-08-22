@@ -260,7 +260,7 @@
             backdrop-filter: blur(5px);
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 10002; /* Increased z-index */
             padding: 20px;
         }
 
@@ -645,6 +645,7 @@
             color: #1a202c;
             background: #f7fafc;
             border-color: #e2e8f0;
+            font-size: 12px; /* Reduced font size */
         }
 
         .point-name {
@@ -790,6 +791,11 @@
 
         .linked-request-item:last-child {
             margin-bottom: 0;
+        }
+
+        .request-highlight {
+            background-color: rgba(16, 185, 129, 0.3) !important;
+            border: 1px solid var(--accent) !important;
         }
 
         .export-import-controls {
@@ -2498,7 +2504,7 @@
                                     font-size: 12px;
                                     line-height: 1.3;
                                     cursor: pointer;
-                                " onclick="(function(){ copyRequestNumberToClipboard('${requestNumber}'); showRequestDetails(${req.id}); })()">
+                                " oncontextmenu="event.preventDefault(); highlightRequestInList(${req.id}); ">
                                     ${req.text} <small style="color:#4a5568; margin-left:6px; font-weight:600;">#${req.id}</small>
                                     <textarea class="note-textarea" placeholder="Заметка..." onchange="saveNote(${req.id}, this.value)">${req.note || ''}</textarea>
                                 </div>
@@ -2718,43 +2724,20 @@
             }
         }
 
-        // Показать детали заявки - открывает модальное окно и выделяет заявку
-        function showRequestDetails(requestId) {
-            // Открываем модальное окно со списком заявок
+        // Highlight request in the list
+        function highlightRequestInList(requestId) {
             elements.modal.style.display = 'flex';
-            
-            // Очищаем поиск, чтобы показать все заявки
-            elements.searchInput.value = '';
-            
-            // Перерендериваем список заявок
-            renderRequestList();
-            
-            // Находим и выделяем нужную заявку
-            setTimeout(() => {
-                const requestElement = document.querySelector(`[data-id="${requestId}"]`);
-                if (requestElement) {
-                    // Добавляем временное выделение
-                    requestElement.style.background = 'rgba(16, 185, 129, 0.3)';
-                    requestElement.style.border = '2px solid var(--accent)';
-                    requestElement.style.borderRadius = '8px';
-                    
-                    // Прокручиваем к элементу
-                    requestElement.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                    
-                    // Убираем выделение через 3 секунды
-                    setTimeout(() => {
-                        requestElement.style.background = '';
-                        requestElement.style.border = '';
-                        requestElement.style.borderRadius = '';
-                    }, 3000);
-                }
-            }, 100);
-            
-            showNotification('📋 Заявка выделена в списке!', 'info');
+            const requestElement = document.querySelector(`[data-id="${requestId}"]`);
+            if (requestElement) {
+                requestElement.classList.add('request-highlight');
+                requestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                    requestElement.classList.remove('request-highlight');
+                }, 3000);
+            }
         }
+
+        
 
         function handleMapFileUpload(file) {
             console.log('Загрузка файла для карты:', file.name);
