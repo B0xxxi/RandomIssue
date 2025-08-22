@@ -1,6 +1,7 @@
 {
   "requests": [
     {
+<<<<<<< HEAD
       "id": 2,
       "text": "86836 — Одинцово",
       "clubId": 40,
@@ -1176,20 +1177,33 @@
       "clubId": null,
       "createdAt": "2025-08-21T10:04:55.593Z"
 <<<<<<< Updated upstream
+=======
+      "id": 1,
+      "text": "1 — Тест",
+      "clubId": 1,
+      "createdAt": "2025-07-16T13:33:12.382Z"
+>>>>>>> parent of 1c0d823 (Resolved merge conflict in app-data.json)
     }
   ],
   "mapPoints": [
     {
+      "id": 1,
+      "name": "ТЕСТ (УДАЛИТЬ)",
+      "address": "Тестовый адрес",
+      "lat": 55.7558,
+      "lng": 37.6176,
+      "createdAt": "2025-07-16T00:00:00.000Z"
+    },
+    {
       "id": 2,
-      "name": "Аэропорт",
-      "address": "Москва, ул. Усиевича, 12/14",
-      "lat": 55.80614,
-      "lng": 37.528217
+      "name": "ЛЕВРОТОВО",
+      "address": "",
+      "lat": 55.75668262066774,
+      "lng": 37.70679473876954,
+      "createdAt": "2025-08-19T14:52:13.450Z"
     },
     {
       "id": 3,
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
       "name": "ПОРТВЕЙН 777",
       "address": "",
       "lat": 55.72343434444449,
@@ -1209,6 +1223,7 @@
   "nextRequestId": 2,
   "nextClubId": 5,
   "lastUpdated": "2025-08-22T13:40:16.136Z"
+<<<<<<< HEAD
 =======
       "name": "Бабушкинская Орион",
       "address": "Москва, ул. Летчика Бабушкина, 26",
@@ -2260,3 +2275,6 @@
   "nextClubId": 75,
   "lastUpdated": "2025-08-22T07:43:00.785Z"
 }
+=======
+}
+>>>>>>> parent of 1c0d823 (Resolved merge conflict in app-data.json)
